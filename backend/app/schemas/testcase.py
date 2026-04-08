@@ -1,0 +1,44 @@
+from __future__ import annotations
+
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+
+class TestCaseItem(BaseModel):
+    case_id: str = Field(alias="caseId")
+    title: str
+    preconditions: list[str] = Field(default_factory=list)
+    steps: list[str] = Field(default_factory=list)
+    expected_result: str = Field(alias="expectedResult")
+    category: str
+    priority: str = "P2"
+    module: str = ""
+    module_id: str = Field(default="", alias="moduleId")
+    confirmation_note: Optional[str] = Field(default=None, alias="confirmationNote")
+    source_batch: Optional[str] = Field(default=None, alias="sourceBatch")
+
+    model_config = {"populate_by_name": True}
+
+
+class ReviewQuestion(BaseModel):
+    id: str
+    question_type: str = Field(alias="questionType")
+    description: str
+    module: str = ""
+    suggestion: str = ""
+
+    model_config = {"populate_by_name": True}
+
+
+class GenerationMetadata(BaseModel):
+    case_count: int = Field(alias="caseCount")
+    category_counts: dict[str, int] = Field(alias="categoryCounts")
+    module_counts: dict[str, int] = Field(default_factory=dict, alias="moduleCounts")
+    priority_counts: dict[str, int] = Field(default_factory=dict, alias="priorityCounts")
+    review_questions: list[ReviewQuestion] = Field(default_factory=list, alias="reviewQuestions")
+    warnings: list[str] = Field(default_factory=list)
+    truncated: bool = False
+    incomplete_categories: list[str] = Field(default_factory=list, alias="incompleteCategories")
+
+    model_config = {"populate_by_name": True}

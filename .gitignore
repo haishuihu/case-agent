@@ -1,0 +1,27 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+backend/.coverage
+backend/htmlcov/
+backend/uploads/
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+.env
+.cursor/
+
+# LLM 缓存（API 响应缓存，不应提交）
+backend/.llm_cache/
+
+# 构建产物
+frontend/tsconfig.app.tsbuildinfo
+frontend/tsconfig.node.tsbuildinfo
+
+# 临时文件
+tmp/
