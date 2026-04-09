@@ -27,7 +27,7 @@ from app.schemas.model import ModelOption
 from app.services.file_parser import DocumentContext, ImageContext, parse_document_upload, parse_image_upload
 from app.services.llm_client import LLMClient, build_llm_client
 from app.services.model_registry import list_model_profiles
-from app.services.generation_worker import _elapsed_since_started, spawn_generation_thread
+from app.services.generation_worker import _elapsed_since_started, fail_stale_running_task, spawn_generation_thread
 from app.services.testcase_exporter import (
     _build_filename,
     _content_disposition,
@@ -113,7 +113,7 @@ def _task_status_response(record: GenerationRecord) -> TaskStatusResponse:
         progress = 1.0
 
     result: Optional[GenerateResponse] = None
-    if record.status == "succeeded" and record.output_markdown and record.raw_response:
+    if record.status == "succeeded" and (record.raw_response or record.output_markdown):
         result = _build_generate_response_from_record(record)
 
     preview = _preview_requirement(record.requirement_text)
@@ -379,8 +379,9 @@ async def generate_testcases_async(
     image_files: Annotated[Optional[list[UploadFile]], File(alias="imageFiles")] = None,
     db: Session = Depends(get_db_session),
 ) -> TaskSubmitResponse:
-    # 清理超过 30 分钟仍未完成的僵尸 running 任务
-    stale_threshold = datetime.now(timezone.utc) - timedelta(minutes=30)
+    # 清理超过配置时长仍未完成的僵尸 running 任务
+    settings = get_settings()
+    stale_threshold = datetime.now(timezone.utc) - timedelta(minutes=settings.generation_max_runtime_minutes)
     stale_count = (
         db.query(GenerationRecord)
         .filter(
@@ -390,7 +391,7 @@ async def generate_testcases_async(
         .update(
             {
                 "status": "failed",
-                "error_message": "任务超时未完成（超过 30 分钟），已自动清理。",
+                "error_message": f"任务超时未完成（超过 {settings.generation_max_runtime_minutes} 分钟），已自动清理。",
                 "progress_phase": "failed",
             }
         )
@@ -463,6 +464,8 @@ def get_generation_task(task_id: str, db: Session = Depends(get_db_session)) -> 
     record = db.get(GenerationRecord, task_id)
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="未找到该任务。")
+    # 轮询路径上也要检测超时，避免僵尸 running 任务永远无法清理
+    fail_stale_running_task(db, record)
     return _task_status_response(record)
 
 
@@ -571,6 +574,8 @@ def export_generation(
 # --- WebSocket for real-time task progress ---
 _active_ws_connections: dict[str, list[WebSocket]] = {}
 
+HEARTBEAT_INTERVAL = 15  # 心跳间隔（秒）
+
 
 @router.websocket("/generate/ws/{task_id}")
 async def websocket_task_progress(websocket: WebSocket, task_id: str):
@@ -578,13 +583,31 @@ async def websocket_task_progress(websocket: WebSocket, task_id: str):
     if task_id not in _active_ws_connections:
         _active_ws_connections[task_id] = []
     _active_ws_connections[task_id].append(websocket)
+
+    heartbeat_task = None
+
+    async def send_heartbeat() -> None:
+        """定期发送心跳，防止中间设备断开连接。"""
+        while True:
+            await asyncio.sleep(HEARTBEAT_INTERVAL)
+            try:
+                await websocket.send_text("heartbeat")
+            except Exception:
+                break
+
     try:
+        # 启动心跳任务
+        heartbeat_task = asyncio.create_task(send_heartbeat())
+
         while True:
             # Wait for a message (client can send pings or nothing)
             try:
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
                 if data == "ping":
                     await websocket.send_text("pong")
+                elif data == "heartbeat":
+                    # 客户端心跳响应，忽略
+                    pass
             except asyncio.TimeoutError:
                 pass
 
@@ -611,6 +634,14 @@ async def websocket_task_progress(websocket: WebSocket, task_id: str):
     except WebSocketDisconnect:
         pass
     finally:
+        # 取消心跳任务
+        if heartbeat_task:
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
+
         _active_ws_connections[task_id] = [
             ws for ws in _active_ws_connections.get(task_id, []) if ws != websocket
         ]

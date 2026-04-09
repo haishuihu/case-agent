@@ -38,6 +38,33 @@ def _elapsed_since_started(record: GenerationRecord) -> int:
     return int(max(0.0, delta.total_seconds()))
 
 
+def fail_stale_running_task(db: Session, record: GenerationRecord) -> bool:
+    """
+    将超时的 running 任务标记为 failed。幂等操作：已非 running 的记录不受影响。
+    返回 True 表示执行了标记，False 表示无需处理。
+    """
+    if record.status != "running":
+        return False
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    threshold_seconds = settings.generation_max_runtime_minutes * 60
+    if _elapsed_since_started(record) < threshold_seconds:
+        return False
+    record.status = "failed"
+    record.error_message = (
+        f"任务运行时长超过 {settings.generation_max_runtime_minutes} 分钟，未能在预期时间内完成，已自动终止。"
+    )
+    record.progress_phase = "failed"
+    db.commit()
+    logger.warning(
+        "[stale] task_id=%s marked failed (elapsed > %dm)",
+        record.id,
+        settings.generation_max_runtime_minutes,
+    )
+    return True
+
+
 def persist_progress(db: Session, task_id: str, payload: dict[str, object]) -> None:
     record = db.get(GenerationRecord, task_id)
     if not record:
@@ -63,37 +90,33 @@ def run_generation_task(
     image_contexts: list[ImageContext],
     model_key: Optional[str],
 ) -> None:
+    """在独立线程中运行生成任务，避免跨线程使用 Session。"""
     db = SessionLocal()
     try:
         record = db.get(GenerationRecord, task_id)
         if not record or record.status != "running":
             return
 
-        # 复用主 db session 进行进度更新和取消检查
-        # 避免每次回调都创建新的 SessionLocal
-        _db_for_progress = db
-
+        # 使用独立的 Session 用于进度更新，避免跨线程共享
         def progress_callback(payload: dict[str, object]) -> None:
+            progress_db = SessionLocal()
             try:
-                persist_progress(_db_for_progress, task_id, payload)
-                _db_for_progress.commit()
+                persist_progress(progress_db, task_id, payload)
             except Exception as exc:
                 logger.warning("[progress-callback] persist failed: %s", exc)
-                try:
-                    _db_for_progress.rollback()
-                except Exception:
-                    pass
+            finally:
+                progress_db.close()
 
+        # 使用独立的 Session 用于取消检查
         def cancel_check() -> bool:
-            # 直接使用已经 commit 过的 db session 查询最新状态
-            # 注意：这里需要刷新以获取其他线程/连接的更新
+            check_db = SessionLocal()
             try:
-                _db_for_progress.refresh(record)
-                return bool(record.cancel_requested)
-            except Exception:
-                # 如果 refresh 失败，说明 session 可能已过期，直接再查一次
-                r = _db_for_progress.get(GenerationRecord, task_id)
+                r = check_db.get(GenerationRecord, task_id)
                 return bool(r and r.cancel_requested)
+            except Exception:
+                return False
+            finally:
+                check_db.close()
 
         try:
             llm_client = build_llm_client(model_key)

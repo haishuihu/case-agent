@@ -16,6 +16,7 @@ from app.core.config import get_settings
 from app.db.migrate import ensure_generation_record_columns
 from app.db.session import Base, engine, SessionLocal
 from app.models import generation  # noqa: F401
+from app.services.generation_worker import fail_stale_running_task
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name)
@@ -37,25 +38,22 @@ def on_startup() -> None:
     ensure_generation_record_columns(engine)
 
     # 启动时清理历史遗留的超时僵尸 running 任务
-    stale_threshold = datetime.now(timezone.utc) - timedelta(minutes=30)
     db = SessionLocal()
     try:
-        stale_count = (
+        settings = get_settings()
+        stale_threshold = datetime.now(timezone.utc) - timedelta(minutes=settings.generation_max_runtime_minutes)
+        stale_count = 0
+        for record in (
             db.query(generation.GenerationRecord)
             .filter(
                 generation.GenerationRecord.status == "running",
                 generation.GenerationRecord.started_at < stale_threshold,
             )
-            .update(
-                {
-                    "status": "failed",
-                    "error_message": "任务超时未完成（超过 30 分钟），已自动清理。",
-                    "progress_phase": "failed",
-                }
-            )
-        )
+            .all()
+        ):
+            if fail_stale_running_task(db, record):
+                stale_count += 1
         if stale_count > 0:
-            db.commit()
             logger.warning("[startup] cleaned %d stale running tasks from previous sessions", stale_count)
     except Exception:
         db.rollback()
