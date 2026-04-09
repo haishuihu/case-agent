@@ -57,23 +57,6 @@ class LLMClient:
             timeout=profile.timeout_seconds,
         )
 
-    def _build_cache_key(self, system_prompt: str, user_content: Union[str, list[dict]], model: str) -> str:
-        # 仅使用需求内容和模型名作为缓存键，不包含 existing_case_titles 等动态变量
-        # 这样同一模块的重复调用可以命中缓存（即使 existing_case_titles 不同）
-        # 避免因 existing_case_titles 增长导致缓存失效
-        from app.services.llm_cache import get_llm_cache
-        combined = f"SYS:{system_prompt}\nUSER:{user_content}"
-        cache = get_llm_cache()
-        # 使用仅包含 prompt + model 的键，不使用 extra 参数
-        return cache._make_key(combined, model)
-
-    def _build_cache_key_for_dedup(self, system_prompt: str, user_content: Union[str, list[dict]], model: str, dedup_context: str) -> str:
-        """构建包含去重上下文的缓存键，用于需要区分的场景。"""
-        from app.services.llm_cache import get_llm_cache
-        combined = f"SYS:{system_prompt}\nUSER:{user_content}\nDEDUP:{dedup_context}"
-        cache = get_llm_cache()
-        return cache._make_key(combined, model)
-
     def create_chat_completion(
         self,
         system_prompt: str,
@@ -82,7 +65,6 @@ class LLMClient:
         response_format: Optional[dict[str, object]] = None,
     ) -> ChatCompletionResult:
         effective_max_tokens = max_tokens or self.profile.max_output_tokens
-        cache_key = self._build_cache_key(system_prompt, user_content, self.profile.model_name)
 
         # Try cache first
         try:
@@ -92,7 +74,7 @@ class LLMClient:
                 self.profile.model_name,
             )
             if cached is not None:
-                logger.info("[llm-cache] HIT model=%s key=%s", self.profile.model_name, cache_key[:8])
+                logger.info("[llm-cache] HIT model=%s", self.profile.model_name)
                 return ChatCompletionResult(
                     content=cached,
                     finish_reason="cache_hit",
@@ -153,7 +135,7 @@ class LLMClient:
                 self.profile.model_name,
                 stripped,
             )
-            logger.info("[llm-cache] stored model=%s key=%s", self.profile.model_name, cache_key[:8])
+            logger.info("[llm-cache] stored model=%s", self.profile.model_name)
         except Exception as exc:
             logger.warning("[llm-cache] write failed: %s", exc)
 

@@ -74,16 +74,21 @@ export function GenerationTaskProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setTaskStatus(s);
       setPollError(null);
-      if (s.status === "succeeded" && s.result) {
-        setResult(s.result);
+      if (s.status === "succeeded") {
+        if (s.result) {
+          setResult(s.result);
+        }
+        // 清除活动状态，防止 succeeded 但 result 缺失时任务永远挂着
         setStoredGenerationTaskId(null);
         setTaskId(null);
-        setTaskStatus(s);
+        if (!s.result) {
+          setPollError(s.errorMessage ?? "生成已完成，但未能加载结果，请查看生成历史。");
+        }
       }
       if (s.status === "failed" || s.status === "cancelled") {
         setStoredGenerationTaskId(null);
         setTaskId(null);
-        setTaskStatus(s);
+        setPollError(s.errorMessage ?? "任务未成功完成。");
       }
     };
 

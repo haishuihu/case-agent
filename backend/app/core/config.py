@@ -82,6 +82,10 @@ class Settings(BaseSettings):
 
     frontend_dist_path: str = "frontend/dist"
 
+    # 异步生成任务的最大运行时长（分钟）；超时后任务自动标记为 failed
+    # 注意：Phase2/Phase3-5 管道耗时差异大，建议根据模型输出能力适度放宽（默认 45 分钟）
+    generation_max_runtime_minutes: int = 45
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

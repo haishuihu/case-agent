@@ -16,6 +16,52 @@ class _PhaseTimeoutError(Exception):
     """Raised when a phase exceeds its time budget."""
 
 
+def _call_with_timeout_and_cancel(
+    fn: Callable[[], _T],
+    timeout_seconds: float,
+    cancel_check: CancelCheck = None,
+) -> _T:
+    """Run fn in a thread with optional cancel check and timeout."""
+    result: dict[str, object] = {"value": None, "exc": None}
+    done_event = threading.Event()
+    cancel_check_interval = 2.0  # 每 2 秒检查一次取消标志
+
+    def _check_cancel_loop() -> None:
+        """轮询取消标志，被取消时立即设置 done_event。"""
+        nonlocal cancel_check
+        if not cancel_check:
+            return
+        while not done_event.is_set():
+            if cancel_check():
+                logger.info("[cancel] cancel requested during long-running phase")
+                done_event.set()
+                return
+            time.sleep(cancel_check_interval)
+
+    def target() -> None:
+        try:
+            result["value"] = fn()
+        except Exception as exc:  # noqa: PERF203
+            result["exc"] = exc
+        finally:
+            done_event.set()
+
+    thread = threading.Thread(target=target, daemon=True)
+    thread.start()
+
+    # 启动取消检查线程（如果提供了 cancel_check）
+    cancel_thread = None
+    if cancel_check:
+        cancel_thread = threading.Thread(target=_check_cancel_loop, daemon=True)
+        cancel_thread.start()
+
+    if not done_event.wait(timeout=timeout_seconds):
+        raise _PhaseTimeoutError(f"阶段执行超过 {timeout_seconds:.0f}s 超时限制")
+    if result["exc"] is not None:
+        raise result["exc"]  # type: ignore[misc]
+    return result["value"]  # type: ignore[return-value]
+
+
 _T = TypeVar("_T")
 
 
@@ -92,16 +138,58 @@ class TestCaseGenerator:
 
     @staticmethod
     def _progress_ratio(phases: list[dict[str, object]]) -> float:
+        """计算进度百分比。
+
+        使用固定权重系统，避免动态 Phase 数量导致的进度回退问题。
+        权重定义：
+        - phase1_review: 10%
+        - phase2_batch: 40% (批量生成，包含内部子进度)
+        - 回退模式 (phase3_smoke + phase4_* + phase5_review): 90%
+        - finalizing: 100%
+        """
         if not phases:
             return 0.0
-        n = len(phases)
-        done = sum(
-            1 for p in phases if p.get("status") in ("done", "skipped")
-        )
-        running = any(p.get("status") == "running" for p in phases)
-        if running:
-            return min(0.99, (done + 0.45) / n)
-        return done / n if n else 0.0
+
+        # 固定权重映射
+        WEIGHT_MAP: dict[str, float] = {
+            "phase1_review": 0.10,
+            "phase2_batch": 0.40,
+            # 回退模式权重
+            "phase3_smoke": 0.10,
+            "phase5_review": 0.15,
+        }
+
+        total_weight = 0.0
+        completed_weight = 0.0
+        has_running = False
+
+        for p in phases:
+            name = str(p.get("name", ""))
+            status = str(p.get("status", ""))
+
+            # 计算当前 phase 的权重
+            if name.startswith("phase4_"):
+                # 模块详细生成：每个模块分配权重，但最多 8 个模块
+                phase_weight = 0.60 / max(len([ph for ph in phases if str(ph.get("name", "")).startswith("phase4_")]), 1)
+            else:
+                phase_weight = WEIGHT_MAP.get(name, 0.0)
+
+            total_weight += phase_weight
+
+            if status in ("done", "skipped"):
+                completed_weight += phase_weight
+            elif status == "running":
+                has_running = True
+                # running 的 phase 只计算 45% 进度
+                completed_weight += phase_weight * 0.45
+
+        if total_weight == 0.0:
+            return 0.0
+
+        progress = completed_weight / total_weight
+        if has_running:
+            return min(0.99, progress)
+        return min(1.0, progress)
 
     def _emit_progress(
         self,
@@ -243,7 +331,10 @@ class TestCaseGenerator:
             result.modules = [
                 PlannedModule(id="M01", name="核心功能", description=requirement_text[:200])
             ]
-            logger.info("[phase1-review] no modules parsed, using fallback single module")
+            logger.warning(
+                "[phase1-review] no modules parsed from LLM response, using fallback single module. "
+                "This may indicate a parsing issue or ambiguous requirement."
+            )
 
         return result
 
@@ -513,12 +604,20 @@ class TestCaseGenerator:
         t0 = time.monotonic()
         logger.info("[phase5-review] start  existing_cases=%d  max_tokens=%d", len(existing_cases), review_max)
 
-        response = self.llm_client.create_chat_completion(
-            system_prompt=SYSTEM_PROMPT,
-            user_content=prompt,
-            max_tokens=review_max,
-            response_format={"type": "json_object"},
-        )
+        def _do_review() -> object:
+            return self.llm_client.create_chat_completion(
+                system_prompt=SYSTEM_PROMPT,
+                user_content=prompt,
+                max_tokens=review_max,
+                response_format={"type": "json_object"},
+            )
+
+        try:
+            response = _call_with_timeout(_do_review, timeout_seconds=300)
+        except _PhaseTimeoutError:
+            warnings.append("评审补充阶段执行超时（300s），已跳过该阶段。")
+            logger.warning("[phase5-review] timeout after 300s, skipping")
+            return []
 
         logger.info(
             "[phase5-review] done  elapsed=%.1fs  finish_reason=%s  content_len=%d",
@@ -553,11 +652,13 @@ class TestCaseGenerator:
         document_contexts: list[DocumentContext],
         review: ReviewResult,
         warnings: list[str],
+        cancel_check: CancelCheck = None,
     ) -> tuple[list[TestCaseItem], list[TestCaseItem], list[TestCaseItem]]:
         """合并的批量生成：冒烟测试 + 模块详情 + 评审补充，一次 LLM 调用完成。
 
         返回 (smoke_cases, module_cases, review_cases) 三元组。
-        当解析失败时，smoke_cases/module_cases/review_cases 均为空列表。
+        当解析失败或被取消时，smoke_cases/module_cases/review_cases 均为空列表。
+        支持取消检查，可在长时间运行的 LLM 调用中响应取消请求。
         """
         business_rules = (
             "\n".join(f"- {r}" for r in review.business_rules)
@@ -596,11 +697,17 @@ class TestCaseGenerator:
             )
 
         try:
-            response = _call_with_timeout(_do_batch, timeout_seconds=480)
+            # 使用支持取消检查的超时调用
+            response = _call_with_timeout_and_cancel(_do_batch, timeout_seconds=480, cancel_check=cancel_check)
         except _PhaseTimeoutError:
             warnings.append("批量生成阶段执行超时（480s），已回退到原有管道模式。")
             logger.warning("[phase2-batch] timeout after 480s, returning empty for fallback")
             return [], [], []
+        except RuntimeError as exc:
+            # 取消标志被触发
+            warnings.append(f"批量生成已取消：{exc}")
+            logger.info("[phase2-batch] cancelled during batch generation")
+            raise  # 让上层处理取消
 
         except ValueError as exc:
             # API 认证失败、超限、连接失败等，透传具体原因
@@ -654,12 +761,25 @@ class TestCaseGenerator:
         profile,
         cancel_check: CancelCheck,
     ) -> tuple[list[TestCaseItem], list[dict[str, object]]]:
-        """原有 Phase3/4/5 管道的完整实现，用于 Phase2 失败时的回退。"""
+        """原有 Phase3/4/5 管道的完整实现，用于 Phase2 失败时的回退。
+
+        注意：此方法内部会重新构建 phases_state 以反映五阶段模式的状态。
+        由于 _progress_ratio 使用固定权重系统，进度计算不会因 Phase 数量变化而回退。
+        """
         raw_batches: list[dict[str, object]] = []
 
-        # 构建原有 phase plan
+        # 记录原始状态以便日志记录
+        original_phase_count = len(phases_state)
+
+        # 构建原有 phase plan（会覆盖传入的 phases_state）
         phases_state = self._build_phase_plan(review)
         phases_state[0]["status"] = "done"
+
+        logger.info(
+            "[pipeline] falling back from batch mode (%d phases) to original pipeline (%d phases)",
+            original_phase_count, len(phases_state)
+        )
+
         self._emit_progress(
             progress_callback,
             phases_state,
@@ -699,7 +819,9 @@ class TestCaseGenerator:
             )
             return idx, parsed_cases, raw_batch
 
-        with ThreadPoolExecutor(max_workers=min(n_modules, 8)) as executor:
+        # Phase4 使用固定并行度，最多 8 个并发
+        # 使用固定并发数而非 min(n_modules, 8)，确保即使只有少量模块也能充分利用资源
+        with ThreadPoolExecutor(max_workers=8) as executor:
             futures = {
                 executor.submit(_run_phase4_module, idx, module): (idx, module)
                 for idx, module in enumerate(review.modules, 1)
@@ -847,9 +969,14 @@ class TestCaseGenerator:
         # --- Phase 2: Batch Generation (合并原 Phase3/4/5 为单次调用) ---
         t_phase2 = time.monotonic()
         try:
+            # 传入 cancel_check 以支持在批量生成中响应取消
             smoke_cases, module_cases, review_cases = self._phase2_batch(
-                requirement_text, document_contexts, review, warnings
+                requirement_text, document_contexts, review, warnings,
+                cancel_check=cancel_check,
             )
+        except RuntimeError as exc:
+            # 任务被取消，向上传播
+            raise
         except Exception as exc:
             # 未知异常，打印日志并更新 phases 状态后继续（让回退逻辑处理）
             logger.warning("[generate] phase2_batch unexpected exception: %s", exc)
@@ -867,7 +994,8 @@ class TestCaseGenerator:
         phases_state[1]["status"] = "done"
         phases_state[1]["elapsedSeconds"] = e2
 
-        # 如果 Phase2 解析失败（返回空列表），回退到原有的 Phase3/4/5 管道
+        # 判断是否需要回退：只有当所有结果都为空时才回退
+        # 如果有部分结果（如只有 smoke_cases），仍然使用批量生成结果但发出警告
         if not smoke_cases and not module_cases and not review_cases:
             logger.info("[generate] phase2 batch returned empty, falling back to original pipeline")
             warnings.append("批量生成解析失败，已回退到原有管道模式（分阶段生成）。")
@@ -877,6 +1005,12 @@ class TestCaseGenerator:
                 requirement_context, profile, cancel_check,
             )
         else:
+            # 记录部分成功的情况
+            if not smoke_cases:
+                warnings.append("注意：批量生成未返回冒烟测试用例（P0/P1）。")
+            if not module_cases:
+                warnings.append("注意：批量生成未返回模块详情用例（P2/P3）。")
+
             # Phase2 成功：合并结果
             all_cases: list[TestCaseItem] = list(smoke_cases)
             all_cases.extend(module_cases)
@@ -893,14 +1027,23 @@ class TestCaseGenerator:
                     "review_count": len(review_cases),
                 }
             ]
-            self._emit_progress(
-                progress_callback,
-                phases_state,
-                "done",
-                "生成完成",
-            )
 
         # --- Dedupe & Renumber ---
+        # 使用单独的 finalizing phase，避免状态闪烁
+        # 先添加 finalizing phase，再发送进度更新
+        phases_state.append({
+            "name": "finalizing",
+            "label": "正在整理并保存结果",
+            "status": "running",
+            "elapsedSeconds": 0,
+        })
+        self._emit_progress(
+            progress_callback,
+            phases_state,
+            "finalizing",
+            "正在整理并保存结果",
+        )
+
         cases = dedupe_and_renumber(all_cases)
         if not cases:
             raise ValueError("模型未生成有效测试用例，请调整需求描述或模型配置后重试。")
@@ -960,6 +1103,15 @@ class TestCaseGenerator:
             },
             ensure_ascii=False,
             indent=2,
+        )
+
+        # 更新 finalizing 状态为 done
+        phases_state[-1]["status"] = "done"
+        self._emit_progress(
+            progress_callback,
+            phases_state,
+            "done",
+            "生成完成",
         )
 
         return StructuredGenerationResult(

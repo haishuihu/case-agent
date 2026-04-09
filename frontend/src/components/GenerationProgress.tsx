@@ -40,6 +40,7 @@ export function GenerationProgress({
   const elapsed = taskStatus?.elapsedSeconds ?? 0;
   const phases = taskStatus?.phases ?? [];
   const label = taskStatus?.phaseLabel ?? "准备中…";
+  const isFinishing = progress >= 0.99 && taskStatus?.status === "running";
 
   return (
     <div className="generation-progress-panel">
@@ -60,7 +61,7 @@ export function GenerationProgress({
             style={{ marginTop: 8 }}
           />
           <Typography.Paragraph type="secondary" style={{ margin: "8px 0 0", fontSize: 13 }}>
-            当前：{label}
+            当前：{isFinishing ? "正在整理并保存结果" : label}
           </Typography.Paragraph>
         </div>
 

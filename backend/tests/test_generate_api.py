@@ -231,3 +231,45 @@ def test_generate_summary_rejects_empty_input() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "请至少填写需求摘要或上传参考文件。"
+
+
+def test_stale_running_task_marked_failed_on_get() -> None:
+    """GET /api/v1/generate/tasks/{id} 应当在读状态时将超时的 running 任务自动标记为 failed。"""
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import patch
+
+    def fake_settings():
+        from app.core.config import Settings
+
+        s = Settings()
+        s.generation_max_runtime_minutes = 1
+        return s
+
+    with TestClient(app) as client:
+        from app.db.session import SessionLocal
+        from app.models.generation import GenerationRecord
+
+        db = SessionLocal()
+        try:
+            stale_record = GenerationRecord(
+                requirement_text="超时测试任务",
+                model_name="stub-model",
+                prompt_snapshot="超时测试",
+                status="running",
+                progress_phase="running",
+                started_at=datetime.now(timezone.utc) - timedelta(minutes=2),
+            )
+            db.add(stale_record)
+            db.commit()
+            db.refresh(stale_record)
+            task_id = stale_record.id
+        finally:
+            db.close()
+
+        with patch("app.core.config.get_settings", fake_settings):
+            resp = client.get(f"/api/v1/generate/tasks/{task_id}")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "failed", f"expected failed, got {body['status']}"
+        assert body.get("errorMessage"), f"expected non-empty errorMessage, got {body.get('errorMessage')}"
