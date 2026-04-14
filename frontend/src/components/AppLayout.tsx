@@ -3,6 +3,7 @@ import { Layout, Menu, Space, Typography } from "antd";
 import {
   ExperimentOutlined,
   BookOutlined,
+  ToolOutlined,
   LoadingOutlined,
   CheckCircleOutlined,
 } from "@ant-design/icons";
@@ -13,6 +14,7 @@ import { useGenerationTask } from "../context/GenerationTaskContext";
 const NAV_ITEMS = [
   { key: "/", label: "用例生成", icon: <ExperimentOutlined /> },
   { key: "/knowledge", label: "知识库", icon: <BookOutlined /> },
+  { key: "/tools", label: "测试工具", icon: <ToolOutlined /> },
 ];
 
 export function AppLayout() {
@@ -22,7 +24,11 @@ export function AppLayout() {
   const [showDone, setShowDone] = useState(false);
   const prevIdRef = useRef<string | null>(null);
 
-  const activeKey = location.pathname.startsWith("/knowledge") ? "/knowledge" : "/";
+  const activeKey = location.pathname.startsWith("/knowledge")
+    ? "/knowledge"
+    : location.pathname.startsWith("/tools")
+    ? "/tools"
+    : "/";
 
   useEffect(() => {
     const id = taskStatus?.taskId ?? null;

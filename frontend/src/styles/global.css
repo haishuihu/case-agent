@@ -149,7 +149,7 @@ body {
 }
 .app-header-nav .ant-menu-item {
   color: rgba(255, 255, 255, 0.75) !important;
-  font-size: 14px;
+  font-size: 16px;
 }
 .app-header-nav .ant-menu-item:hover {
   color: #fff !important;
@@ -160,7 +160,7 @@ body {
 }
 .app-header-nav .ant-menu-item-selected::after,
 .app-header-nav .ant-menu-item::after {
-  border-bottom-color: rgba(255, 255, 255, 0.9) !important;
+  display: none !important;
 }
 
 .app-header-right {
@@ -1241,6 +1241,27 @@ body {
   .summary-modal .ant-modal-footer .ant-btn {
     flex: 1 1 100%;
   }
+}
+
+/* ============================================================
+   Tools Page
+   ============================================================ */
+.tools-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.tools-page-header {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 58, 138, 0.08) 0%,
+    rgba(26, 86, 219, 0.06) 50%,
+    rgba(99, 102, 241, 0.04) 100%
+  );
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg) var(--space-xl);
+  box-shadow: var(--shadow-card);
 }
 
 /* ============================================================
