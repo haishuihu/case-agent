@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from typing import Annotated, Optional
@@ -38,6 +39,8 @@ from app.services.testcase_exporter import (
 from app.services.testcase_parser import load_generation_snapshot
 
 router = APIRouter(tags=["generate"])
+
+logger = logging.getLogger(__name__)
 
 
 def _preview_requirement(text: Optional[str], max_len: int = 80) -> str:
