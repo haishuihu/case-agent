@@ -214,6 +214,10 @@ def retrieve_knowledge_for_generation(
 
     candidates = coarse_filter(db, module_keywords=keywords, limit=30)
     if not candidates:
+        logger.warning(
+            "[knowledge] no candidates found for requirement_text=%r module_names=%r keywords=%r",
+            requirement_text[:100], module_names, keywords
+        )
         return []
 
     candidate_map = {d.id: d for d in candidates}
@@ -223,8 +227,21 @@ def retrieve_knowledge_for_generation(
             query_embedding = generate_single_embedding(requirement_text[:2000])
             ranked = embedding_rerank(query_embedding, list(candidate_map.keys()), db, top_k)
             results = [(candidate_map[did], score, "embedding") for did, score in ranked if did in candidate_map]
+            if not results:
+                logger.warning(
+                    "[knowledge] embedding rerank returned empty for requirement_text=%r, "
+                    "candidates=%d embedding_available=%s",
+                    requirement_text[:100], len(candidates), is_embedding_available()
+                )
             return results[:top_k]
         except Exception as exc:
             logger.warning("[knowledge] retrieval embedding failed: %s", exc)
 
-    return [(d, 0.0, "tag") for d in candidates[:top_k]]
+    results = [(d, 0.0, "tag") for d in candidates[:top_k]]
+    if not results:
+        logger.warning(
+            "[knowledge] no results for requirement_text=%r module_names=%r, "
+            "candidates=%d embedding_available=%s",
+            requirement_text[:100], module_names, len(candidates), is_embedding_available()
+        )
+    return results
