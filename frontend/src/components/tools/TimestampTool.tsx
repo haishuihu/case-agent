@@ -3,11 +3,11 @@ import {
   Button,
   Card,
   Col,
-  DatePicker,
   Input,
   Radio,
   Row,
   Select,
+  Segmented,
   Space,
   Typography,
   message,
@@ -211,7 +211,7 @@ export function TimestampTool() {
     }
     setDateValue(d);
     setStampInput(precision === "ms" ? String(raw) : String(normalized));
-    setStampResult(d.format("YY-MM-DD HH:mm:ss"));
+    setStampResult(d.format("YYYY-MM-DD HH:mm:ss"));
   };
 
   const copyValue = (val: string) => {
@@ -282,23 +282,33 @@ export function TimestampTool() {
         <Col span={12}>
           <Card title="时间戳 → 日期" bodyStyle={{ padding: "16px 20px" }}>
             <Space direction="vertical" style={{ width: "100%" }} size="middle">
-              <Input.TextArea
-                value={stampInput}
-                onChange={handleStampChange}
-                placeholder="输入时间戳"
-                autoSize={{ minRows: 1, maxRows: 2 }}
-                style={{ fontFamily: "var(--font-mono)", width: "50%" }}
-              />
-              <Radio.Group
+              <div>
+                <Typography.Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: "block" }}>
+                  输入时间戳
+                </Typography.Text>
+                <Input.TextArea
+                  value={stampInput}
+                  onChange={handleStampChange}
+                  placeholder="输入时间戳"
+                  autoSize={{ minRows: 1, maxRows: 2 }}
+                  style={{ fontFamily: "var(--font-mono)", width: "100%" }}
+                />
+              </div>
+              <Segmented
                 value={precision}
-                onChange={(e) => handlePrecisionChange(e.target.value)}
-              >
-                <Radio.Button value="s">秒级</Radio.Button>
-                <Radio.Button value="ms">毫秒级</Radio.Button>
-              </Radio.Group>
-              <div style={{ width: "50%" }}>
+                onChange={(val) => handlePrecisionChange(val as TimestampPrecision)}
+                options={[
+                  { label: "秒级", value: "s" },
+                  { label: "毫秒级", value: "ms" },
+                ]}
+                style={{ width: "100%" }}
+              />
+              <div>
+                <Typography.Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: "block" }}>
+                  转换结果
+                </Typography.Text>
                 <ResultBlock
-                  label="转换结果"
+                  label=""
                   value={stampResult}
                   editable
                   onChange={handleStampResultEdit}
@@ -307,7 +317,7 @@ export function TimestampTool() {
               </div>
               <Button
                 type="primary"
-                style={{ width: "50%" }}
+                style={{ width: "100%" }}
                 onClick={() => syncStampToDate(stampInput, precision, tz)}
               >
                 转换
@@ -320,36 +330,46 @@ export function TimestampTool() {
         <Col span={12}>
           <Card title="日期 → 时间戳" bodyStyle={{ padding: "16px 20px" }}>
             <Space direction="vertical" style={{ width: "100%" }} size="middle">
-              <Input.TextArea
-                value={dateText}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setDateText(val);
-                  if (!val.trim()) {
-                    setDateValue(dayjs());
-                    setDateResult("");
-                    return;
-                  }
-                  const parsed = dayjs(val, "YYYY-MM-DD HH:mm:ss", true);
-                  if (parsed.isValid()) {
-                    setDateValue(parsed);
-                    syncDateToStamp(parsed, precision);
-                  }
-                }}
-                placeholder="YYYY-MM-DD HH:mm:ss"
-                autoSize={{ minRows: 1, maxRows: 2 }}
-                style={{ fontFamily: "var(--font-mono)", width: "50%" }}
-              />
-              <Radio.Group
+              <div>
+                <Typography.Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: "block" }}>
+                  输入日期
+                </Typography.Text>
+                <Input.TextArea
+                  value={dateText}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setDateText(val);
+                    if (!val.trim()) {
+                      setDateValue(dayjs());
+                      setDateResult("");
+                      return;
+                    }
+                    const parsed = dayjs(val, "YYYY-MM-DD HH:mm:ss", true);
+                    if (parsed.isValid()) {
+                      setDateValue(parsed);
+                      syncDateToStamp(parsed, precision);
+                    }
+                  }}
+                  placeholder="YYYY-MM-DD HH:mm:ss"
+                  autoSize={{ minRows: 1, maxRows: 2 }}
+                  style={{ fontFamily: "var(--font-mono)", width: "100%" }}
+                />
+              </div>
+              <Segmented
                 value={precision}
-                onChange={(e) => handlePrecisionChange(e.target.value)}
-              >
-                <Radio.Button value="s">秒级</Radio.Button>
-                <Radio.Button value="ms">毫秒级</Radio.Button>
-              </Radio.Group>
-              <div style={{ width: "50%" }}>
+                onChange={(val) => handlePrecisionChange(val as TimestampPrecision)}
+                options={[
+                  { label: "秒级", value: "s" },
+                  { label: "毫秒级", value: "ms" },
+                ]}
+                style={{ width: "100%" }}
+              />
+              <div>
+                <Typography.Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: "block" }}>
+                  转换结果
+                </Typography.Text>
                 <ResultBlock
-                  label="转换结果"
+                  label=""
                   value={dateResult}
                   editable
                   onChange={handleDateResultEdit}
@@ -358,7 +378,7 @@ export function TimestampTool() {
               </div>
               <Button
                 type="primary"
-                style={{ width: "50%" }}
+                style={{ width: "100%" }}
                 onClick={() => syncDateToStamp(dateValue, precision)}
               >
                 转换
@@ -373,7 +393,7 @@ export function TimestampTool() {
         <Row gutter={[12, 8]}>
           {Object.entries(LANG_SNIPPETS).map(([lang, code]) => (
             <Col key={lang} xs={24} sm={12}>
-              <Card size="small" bodyStyle={{ padding: "8px 12px" }}>
+              <Card size="small" bodyStyle={{ padding: "10px 14px" }}>
                 <Space style={{ width: "100%", justifyContent: "space-between" }}>
                   <Typography.Text strong style={{ fontSize: 13 }}>
                     {lang}
@@ -382,7 +402,7 @@ export function TimestampTool() {
                     type="text"
                     size="small"
                     onClick={() => copySnippet(code)}
-                    style={{ fontSize: 11, padding: "0 4px" }}
+                    style={{ fontSize: 11, padding: "0 6px" }}
                   >
                     复制
                   </Button>
@@ -392,9 +412,10 @@ export function TimestampTool() {
                   style={{
                     display: "block",
                     fontFamily: "var(--font-mono)",
-                    fontSize: 11,
+                    fontSize: 12,
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-all",
+                    marginTop: 6,
                   }}
                 >
                   {code}

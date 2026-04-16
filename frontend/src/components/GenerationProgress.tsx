@@ -4,6 +4,7 @@ import {
   ClockCircleOutlined,
   LoadingOutlined,
   MinusCircleOutlined,
+  RocketOutlined,
 } from "@ant-design/icons";
 
 import type { TaskStatusPayload } from "../services/api";
@@ -16,12 +17,12 @@ interface GenerationProgressProps {
 
 function phaseIcon(status: string) {
   if (status === "running") {
-    return <LoadingOutlined style={{ color: "var(--color-primary)" }} />;
+    return <LoadingOutlined style={{ color: "var(--color-primary)", fontSize: 14 }} />;
   }
   if (status === "done" || status === "skipped") {
-    return <CheckCircleOutlined style={{ color: "var(--color-success)" }} />;
+    return <CheckCircleOutlined style={{ color: "var(--color-success)", fontSize: 14 }} />;
   }
-  return <MinusCircleOutlined style={{ color: "var(--text-muted)" }} />;
+  return <MinusCircleOutlined style={{ color: "var(--text-muted)", fontSize: 14 }} />;
 }
 
 function formatElapsed(seconds: number): string {
@@ -39,7 +40,7 @@ export function GenerationProgress({
   const progress = taskStatus?.progress ?? 0;
   const elapsed = taskStatus?.elapsedSeconds ?? 0;
   const phases = taskStatus?.phases ?? [];
-  const label = taskStatus?.phaseLabel ?? "准备中…";
+  const label = taskStatus?.phaseLabel ?? "准备中...";
   const isFinishing = progress >= 0.99 && taskStatus?.status === "running";
 
   return (
@@ -47,10 +48,10 @@ export function GenerationProgress({
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         <div>
           <Space align="center" style={{ width: "100%", justifyContent: "space-between" }}>
-            <Typography.Text strong>生成进度</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 14 }}>生成进度</Typography.Text>
             <Space size="small">
-              <ClockCircleOutlined style={{ color: "var(--text-muted)" }} />
-              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              <ClockCircleOutlined style={{ color: "var(--text-muted)", fontSize: 12 }} />
+              <Typography.Text type="secondary" style={{ fontSize: 13, fontFamily: "var(--font-mono)" }}>
                 已用时 {formatElapsed(elapsed)}
               </Typography.Text>
             </Space>
@@ -58,9 +59,14 @@ export function GenerationProgress({
           <Progress
             percent={Math.round(progress * 100)}
             status="active"
-            style={{ marginTop: 8 }}
+            style={{ marginTop: 12 }}
+            strokeColor={{
+              "0%": "var(--color-primary)",
+              "100%": "var(--color-accent)",
+            }}
           />
-          <Typography.Paragraph type="secondary" style={{ margin: "8px 0 0", fontSize: 13 }}>
+          <Typography.Paragraph type="secondary" style={{ margin: "10px 0 0", fontSize: 13 }}>
+            <RocketOutlined style={{ color: "var(--color-primary)", marginRight: 6 }} />
             当前：{isFinishing ? "正在整理并保存结果" : label}
           </Typography.Paragraph>
         </div>
@@ -70,12 +76,12 @@ export function GenerationProgress({
             size="small"
             dataSource={phases}
             renderItem={(item) => (
-              <List.Item style={{ padding: "6px 0", border: "none" }}>
+              <List.Item style={{ padding: "8px 0", border: "none" }}>
                 <Space>
                   {phaseIcon(String(item.status ?? "pending"))}
                   <span style={{ fontSize: 13 }}>{item.label}</span>
                   {typeof item.elapsedSeconds === "number" && item.elapsedSeconds > 0 && (
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12, fontFamily: "var(--font-mono)" }}>
                       ({item.elapsedSeconds}s)
                     </Typography.Text>
                   )}
@@ -86,7 +92,7 @@ export function GenerationProgress({
         )}
 
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12 }}>
-          你可以自由浏览其他页面，任务将在后台继续执行。
+          你可以自由浏览其他页面，任务��在后台继续执行
         </Typography.Paragraph>
 
         {onCancel && (

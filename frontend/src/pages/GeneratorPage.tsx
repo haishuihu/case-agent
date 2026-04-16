@@ -313,14 +313,16 @@ export function GeneratorPage() {
         />
       )}
 
-      <Row gutter={[20, 20]} className="generator-layout">
-        <Col xs={24} lg={8} xl={7} className="generator-layout-column">
+      <Row gutter={[24, 24]} className="generator-layout">
+        <Col xs={24} lg={7} xl={6} className="generator-layout-column">
           <div className="workspace-column">
             <div className="workspace-column-header">
               <Typography.Title level={5} style={{ margin: 0 }}>
                 输入工作区
               </Typography.Title>
-              <Typography.Text type="secondary">录入测试重点并整理参考材料</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                录入测试重点并整理参考材料
+              </Typography.Text>
             </div>
 
             <div className="input-workspace">
@@ -343,14 +345,14 @@ export function GeneratorPage() {
             </div>
           </div>
         </Col>
-        <Col xs={24} lg={16} xl={17} className="generator-layout-column">
+        <Col xs={24} lg={17} xl={18} className="generator-layout-column">
           <div className="workspace-column">
             <div className="workspace-column-header workspace-column-header--with-actions">
               <div className="workspace-column-header-text">
                 <Typography.Title level={5} style={{ margin: 0 }}>
                   结果工作区
                 </Typography.Title>
-                <Typography.Text type="secondary">
+                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
                   统一查看生成概览、模块拆分、表格和文档格式结果
                 </Typography.Text>
               </div>

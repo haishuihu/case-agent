@@ -271,11 +271,11 @@ export function ResultPreview({
           <Typography.Text className="overview-hero-eyebrow">
             Generation Overview
           </Typography.Text>
-          <Typography.Title level={4} style={{ margin: "6px 0 8px" }}>
+          <Typography.Title level={4} style={{ margin: "8px 0 10px", fontFamily: "var(--font-display)" }}>
             已生成 {result.metadata.caseCount} 条结构化测试用例
           </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            当前结果已按模块、优先级和覆盖类别整理，可继续用表格视图筛选，也可直接导出为文档格式进行评审。
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 14 }}>
+            当前结果已按模块、优先级和覆盖类别整理，可继续用表格视图筛选，也可直接导出为文档格式进行评审
           </Typography.Paragraph>
         </div>
         <div className="overview-hero-side">
@@ -529,7 +529,7 @@ export function ResultPreview({
                     <DashboardOutlined spin />
                   </div>
                   <div className="empty-state-text">
-                    AI 正在多阶段生成测试用例，请稍候…
+                    AI 正在多阶段生成测试用例，请稍候...
                   </div>
                 </>
               )
@@ -539,7 +539,7 @@ export function ResultPreview({
                   <CheckCircleOutlined />
                 </div>
                 <div className="empty-state-text">
-                  在左侧填写需求摘要或上传参考文件后，结果将展示在此处。
+                  在左侧填写需求摘要或上传参考文件后，结果将展示在此处
                 </div>
               </>
             )}

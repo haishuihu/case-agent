@@ -2,9 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Button,
-  Card,
   Col,
-  Descriptions,
   Form,
   Input,
   Popconfirm,
@@ -19,6 +17,7 @@ import {
 import {
   ArrowLeftOutlined,
   DeleteOutlined,
+  EditOutlined,
   ReloadOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
@@ -130,9 +129,11 @@ export function KnowledgeDetailPage() {
 
   if (loading) {
     return (
-      <Card loading style={{ marginTop: 16 }}>
-        <div style={{ height: 200 }} />
-      </Card>
+      <div className="knowledge-detail-page">
+        <div className="knowledge-detail-loading">
+          <Typography.Text type="secondary">加载中...</Typography.Text>
+        </div>
+      </div>
     );
   }
 
@@ -168,180 +169,198 @@ export function KnowledgeDetailPage() {
     },
   ];
 
+  const docTypeLabel =
+    DOC_TYPE_OPTIONS.find((o) => o.value === doc.docType)?.label ?? doc.docType;
+  const statusLabel =
+    STATUS_OPTIONS.find((o) => o.value === doc.status)?.label ?? doc.status;
+
   return (
-    <>
+    <div className="knowledge-detail-page">
       {contextHolder}
 
-      <Space style={{ marginBottom: 16 }}>
+      <div className="knowledge-detail-actions">
         <Button
           icon={<ArrowLeftOutlined />}
           onClick={() => navigate("/knowledge")}
         >
           返回列表
         </Button>
-      </Space>
+        <Space>
+          {!editing ? (
+            <>
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={() => {
+                  form.setFieldsValue({
+                    title: doc.title,
+                    docType: doc.docType,
+                    moduleTags: doc.moduleTags,
+                    status: doc.status,
+                    summary: doc.summary ?? "",
+                    content: doc.content,
+                  });
+                  setEditing(true);
+                }}
+              >
+                编辑
+              </Button>
+              <Button icon={<ReloadOutlined />} onClick={() => void handleReindex()}>
+                重建索引
+              </Button>
+              <Popconfirm
+                title="确定删除此文档？"
+                onConfirm={() => void handleDelete()}
+              >
+                <Button danger icon={<DeleteOutlined />}>
+                  删除
+                </Button>
+              </Popconfirm>
+            </>
+          ) : (
+            <>
+              <Button onClick={() => setEditing(false)}>取消</Button>
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                loading={saving}
+                onClick={() => void handleSave()}
+              >
+                保存
+              </Button>
+            </>
+          )}
+        </Space>
+      </div>
 
-      <Row gutter={[20, 20]}>
-        <Col xs={24} lg={editing ? 24 : 10}>
-          <Card
-            title="文档信息"
-            extra={
-              <Space>
-                {!editing && (
-                  <>
-                    <Button
-                      onClick={() => {
-                        form.setFieldsValue({
-                          title: doc.title,
-                          docType: doc.docType,
-                          moduleTags: doc.moduleTags,
-                          status: doc.status,
-                          summary: doc.summary ?? "",
-                          content: doc.content,
-                        });
-                        setEditing(true);
-                      }}
-                    >
-                      编辑
-                    </Button>
-                    <Button
-                      icon={<ReloadOutlined />}
-                      onClick={() => void handleReindex()}
-                    >
-                      重建索引
-                    </Button>
-                    <Popconfirm
-                      title="确定删除此文档？"
-                      onConfirm={() => void handleDelete()}
-                    >
-                      <Button danger icon={<DeleteOutlined />}>
-                        删除
-                      </Button>
-                    </Popconfirm>
-                  </>
-                )}
-                {editing && (
-                  <>
-                    <Button onClick={() => setEditing(false)}>取消</Button>
-                    <Button
-                      type="primary"
-                      icon={<SaveOutlined />}
-                      loading={saving}
-                      onClick={() => void handleSave()}
-                    >
-                      保存
-                    </Button>
-                  </>
-                )}
-              </Space>
-            }
-          >
-            {editing ? (
-              <Form form={form} layout="vertical">
-                <Form.Item
-                  name="title"
-                  label="标题"
-                  rules={[{ required: true }]}
-                >
-                  <Input />
-                </Form.Item>
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <Form.Item name="docType" label="类型">
-                      <Select options={DOC_TYPE_OPTIONS} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item name="status" label="状态">
-                      <Select options={STATUS_OPTIONS} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item name="moduleTags" label="模块标签">
-                      <Select
-                        mode="tags"
-                        placeholder="回车添加"
-                        tokenSeparators={[","]}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Form.Item name="summary" label="摘要">
-                  <Input.TextArea rows={3} placeholder="可选，检索时优先匹配摘要" />
-                </Form.Item>
-                <Form.Item
-                  name="content"
-                  label="内容"
-                  rules={[{ required: true }]}
-                >
-                  <Input.TextArea rows={16} />
-                </Form.Item>
-              </Form>
-            ) : (
-              <Descriptions column={1} size="small" bordered>
-                <Descriptions.Item label="标题">{doc.title}</Descriptions.Item>
-                <Descriptions.Item label="类型">
-                  <Tag>
-                    {DOC_TYPE_OPTIONS.find((o) => o.value === doc.docType)?.label ??
-                      doc.docType}
-                  </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="状态">
+      <div className="knowledge-detail-section">
+        <div className="knowledge-detail-header">
+          {editing ? (
+            <Form form={form} layout="vertical">
+              <Form.Item
+                name="title"
+                label="标题"
+                rules={[{ required: true }]}
+              >
+                <Input />
+              </Form.Item>
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item name="docType" label="类型">
+                    <Select options={DOC_TYPE_OPTIONS} />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="status" label="状态">
+                    <Select options={STATUS_OPTIONS} />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="moduleTags" label="模块标签">
+                    <Select
+                      mode="tags"
+                      placeholder="回车添加"
+                      tokenSeparators={[","]}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Form.Item name="summary" label="摘要">
+                <Input.TextArea rows={2} placeholder="可选，检索时优先匹配摘要" />
+              </Form.Item>
+              <Form.Item
+                name="content"
+                label="内容"
+                rules={[{ required: true }]}
+              >
+                <Input.TextArea rows={12} />
+              </Form.Item>
+            </Form>
+          ) : (
+            <>
+              <div className="knowledge-detail-title-row">
+                <Typography.Title level={3} style={{ margin: 0 }}>
+                  {doc.title}
+                </Typography.Title>
+                <div className="knowledge-detail-tags">
+                  <Tag>{docTypeLabel}</Tag>
                   <Tag color={doc.status === "active" ? "green" : "default"}>
-                    {STATUS_OPTIONS.find((o) => o.value === doc.status)?.label ??
-                      doc.status}
+                    {statusLabel}
                   </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="模块标签">
-                  {doc.moduleTags.length
-                    ? doc.moduleTags.map((t) => <Tag key={t}>{t}</Tag>)
-                    : "-"}
-                </Descriptions.Item>
-                <Descriptions.Item label="来源">
-                  {doc.sourceType === "upload"
-                    ? `上传 (${doc.sourceFilename ?? ""})`
-                    : "手动录入"}
-                </Descriptions.Item>
-                <Descriptions.Item label="索引状态">
                   <Tag color={EMBEDDING_COLOR[doc.embeddingStatus] ?? "default"}>
                     {doc.embeddingStatus}
                   </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="创建时间">
-                  {new Date(doc.createdAt).toLocaleString("zh-CN")}
-                </Descriptions.Item>
-                {doc.summary && (
-                  <Descriptions.Item label="摘要">
-                    {doc.summary}
-                  </Descriptions.Item>
+                </div>
+              </div>
+              <div className="knowledge-detail-meta">
+                <Typography.Text type="secondary">
+                  来源：{doc.sourceType === "upload"
+                    ? `上传 (${doc.sourceFilename ?? ""})`
+                    : "手动录入"}
+                </Typography.Text>
+                <Typography.Text type="secondary">
+                  创建时间：{new Date(doc.createdAt).toLocaleString("zh-CN")}
+                </Typography.Text>
+                {doc.moduleTags.length > 0 && (
+                  <div className="knowledge-detail-module-tags">
+                    {doc.moduleTags.map((t) => (
+                      <Tag key={t}>{t}</Tag>
+                    ))}
+                  </div>
                 )}
-              </Descriptions>
-            )}
-          </Card>
-        </Col>
+              </div>
+              {doc.summary && (
+                <Typography.Paragraph
+                  type="secondary"
+                  style={{
+                    marginTop: 16,
+                    padding: "12px 16px",
+                    background: "rgba(0, 113, 227, 0.04)",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    borderLeft: "3px solid rgba(0, 113, 227, 0.2)",
+                  }}
+                >
+                  {doc.summary}
+                </Typography.Paragraph>
+              )}
+            </>
+          )}
+        </div>
+      </div>
 
-        {!editing && (
-          <Col xs={24} lg={14}>
-            <Card title="文档内容" style={{ marginBottom: 20 }}>
-              <Typography.Paragraph
-                style={{ whiteSpace: "pre-wrap", fontSize: 13, maxHeight: 400, overflow: "auto" }}
-              >
-                {doc.content}
-              </Typography.Paragraph>
-            </Card>
+      {!editing && (
+        <>
+          <div className="knowledge-detail-section">
+            <div className="knowledge-detail-section-title">文档内容</div>
+            <Typography.Paragraph
+              style={{
+                whiteSpace: "pre-wrap",
+                fontSize: 13,
+                lineHeight: 1.8,
+              }}
+            >
+              {doc.content}
+            </Typography.Paragraph>
+          </div>
 
-            <Card title={`分块预览 (${doc.chunks.length} 块)`}>
-              <Table<KnowledgeChunkItem>
-                rowKey="id"
-                columns={chunkColumns}
-                dataSource={doc.chunks}
-                pagination={doc.chunks.length > 10 ? { pageSize: 10 } : false}
-                size="small"
-              />
-            </Card>
-          </Col>
-        )}
-      </Row>
-    </>
+          <div className="knowledge-detail-section">
+            <div className="knowledge-detail-section-title">
+              分块预览
+              <Typography.Text type="secondary" style={{ fontWeight: 400, fontSize: 13 }}>
+                （共 {doc.chunks.length} 块）
+              </Typography.Text>
+            </div>
+            <Table<KnowledgeChunkItem>
+              rowKey="id"
+              columns={chunkColumns}
+              dataSource={doc.chunks}
+              pagination={doc.chunks.length > 10 ? { pageSize: 10 } : false}
+              size="small"
+            />
+          </div>
+        </>
+      )}
+    </div>
   );
 }
