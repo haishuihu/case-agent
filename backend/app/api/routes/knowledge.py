@@ -124,7 +124,11 @@ def create_document(
     db.add(doc)
     db.commit()
     db.refresh(doc)
-    logger.info("[knowledge] created document id=%s title=%s", doc.id, doc.title)
+
+    from app.services.knowledge_service import index_document
+    index_document(db, doc)
+
+    logger.info("[knowledge] created and indexed document id=%s title=%s", doc.id, doc.title)
     return _doc_to_item(doc)
 
 
@@ -154,7 +158,11 @@ async def upload_document(
     db.add(doc)
     db.commit()
     db.refresh(doc)
-    logger.info("[knowledge] uploaded document id=%s filename=%s", doc.id, parsed.filename)
+
+    from app.services.knowledge_service import index_document
+    index_document(db, doc)
+
+    logger.info("[knowledge] uploaded and indexed document id=%s filename=%s", doc.id, parsed.filename)
     return _doc_to_item(doc)
 
 
@@ -240,6 +248,10 @@ def update_document(
     if payload.content is not None:
         doc.content = payload.content.strip()
         doc.embedding_status = "pending"
+        db.flush()
+        from app.services.knowledge_service import index_document
+        index_document(db, doc)
+        db.refresh(doc)
     if payload.structured_payload is not None:
         doc.structured_payload = json.dumps(payload.structured_payload, ensure_ascii=False)
 
