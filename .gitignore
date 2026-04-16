@@ -10,8 +10,11 @@ __pycache__/
 backend/.coverage
 backend/htmlcov/
 backend/uploads/
+backend/internal_testcase_assistant.db
+backend/pytest_isolated.db
 frontend/node_modules/
 frontend/dist/
+frontend/internal_testcase_assistant.db
 .DS_Store
 .env
 .cursor/
@@ -25,3 +28,6 @@ frontend/tsconfig.node.tsbuildinfo
 
 # 临时文件
 tmp/
+
+# 根目录数据库（开发用）
+internal_testcase_assistant.db
