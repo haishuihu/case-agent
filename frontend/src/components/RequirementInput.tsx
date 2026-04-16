@@ -227,10 +227,10 @@ export function RequirementInput({
             icon={loading ? <LoadingOutlined /> : <SendOutlined />}
             block
           >
-            {loading ? "处理中…" : "生成测试用例"}
+            {loading ? "处理中..." : "生成测试用例"}
           </Button>
           <Typography.Paragraph type="secondary" className="generate-cta-hint">
-            提示：在需求输入框内可使用 Ctrl+Enter / ⌘+Enter 提交生成。
+            提示：在需求输入框内可使用 Ctrl+Enter / Cmd+Enter 快捷提交
           </Typography.Paragraph>
         </div>
       </div>

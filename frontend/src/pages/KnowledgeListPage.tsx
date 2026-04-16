@@ -249,7 +249,7 @@ export function KnowledgeListPage() {
     },
     {
       title: "操作",
-      width: 180,
+      width: 220,
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -331,7 +331,7 @@ export function KnowledgeListPage() {
           </Space>
         }
       >
-        <Space wrap style={{ marginBottom: 16 }}>
+        <Space wrap style={{ marginBottom: 16 }} className="knowledge-filter-bar">
           <Input
             placeholder="搜索标题或内容"
             prefix={<SearchOutlined />}
@@ -383,7 +383,7 @@ export function KnowledgeListPage() {
               setPageSize(ps);
             },
           }}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 1400 }}
           size="middle"
         />
       </Card>

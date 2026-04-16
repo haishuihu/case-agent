@@ -94,10 +94,10 @@ export function JsonFormatterTool() {
 
   return (
     <div className="json-formatter-tool">
-      <Row gutter={16} style={{ marginBottom: 12 }}>
+      <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col flex="none">
           <Space>
-            <Button type="primary" onClick={handleFormat}>
+            <Button type="primary" onClick={handleFormat} icon={<span>格式化</span>}>
               格式化
             </Button>
             <Button onClick={handleMinify}>压缩</Button>
@@ -129,6 +129,9 @@ export function JsonFormatterTool() {
 
       <Row gutter={16}>
         <Col span={12}>
+          <div style={{ marginBottom: 8, fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>
+            输入
+          </div>
           <TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -155,6 +158,9 @@ export function JsonFormatterTool() {
           />
         </Col>
         <Col span={12}>
+          <div style={{ marginBottom: 8, fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>
+            输出
+          </div>
           {error ? (
             <Alert message={error} type="error" showIcon />
           ) : (
@@ -175,7 +181,7 @@ export function JsonFormatterTool() {
       </Row>
 
       {output && (
-        <Row style={{ marginTop: 8 }}>
+        <Row style={{ marginTop: 12 }}>
           <Col>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               输出：{outputStats.chars} 字符 · {outputStats.lines} 行
