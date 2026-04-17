@@ -31,3 +31,6 @@ tmp/
 
 # 根目录数据库（开发用）
 internal_testcase_assistant.db
+
+# 需求文档
+docs
