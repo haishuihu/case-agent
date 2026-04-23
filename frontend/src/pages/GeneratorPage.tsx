@@ -11,6 +11,8 @@ import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 
 import { RequirementInput } from "../components/RequirementInput";
 import { ResultPreview } from "../components/ResultPreview";
+import { ReviewPanel } from "../components/review/ReviewPanel";
+import { AppendGenerate } from "../components/generate/AppendGenerate";
 import { useGenerationTask } from "../context/GenerationTaskContext";
 import {
   clearAllGenerationTasks,
@@ -67,6 +69,9 @@ export function GeneratorPage() {
   const [historyClearing, setHistoryClearing] = useState(false);
   /** 后端仅返回已配置 API Key 的模型；全部未配置时列表为空 */
   const [modelListHint, setModelListHint] = useState<string | null>(null);
+  const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [showAppendPanel, setShowAppendPanel] = useState(false);
+  const [generatedCases, setGeneratedCases] = useState<string>("");
 
   const documentFiles = useMemo(
     () => normalizeFiles(documentFileList),
@@ -78,6 +83,13 @@ export function GeneratorPage() {
   const canSubmit = hasRequirementText || hasAttachments;
 
   const displayResult = historyOverride ?? ctxResult;
+
+  // Keep generated cases markdown in sync for review/append
+  useEffect(() => {
+    if (displayResult?.markdown) {
+      setGeneratedCases(displayResult.markdown);
+    }
+  }, [displayResult]);
 
   const handleDocumentChange: UploadProps["onChange"] = ({ fileList }) => {
     setDocumentFileList(fileList);
@@ -368,6 +380,53 @@ export function GeneratorPage() {
               onCancelTask={taskId && taskStatus?.status === "running" ? handleCancelTask : undefined}
               cancellingTask={cancelling}
             />
+            {displayResult && (
+              <div style={{ marginTop: 0 }}>
+                {showReviewPanel ? (
+                  <ReviewPanel
+                    requirementText={requirementText}
+                    documentFiles={documentFiles}
+                    imageFiles={imageFiles}
+                    modelKey={selectedModelKey}
+                    generatedCases={generatedCases}
+                    caseTitle={displayResult?.metadata?.caseCount ? `用例生成 (${displayResult.metadata.caseCount}个)` : undefined}
+                    generationId={displayResult?.generationId}
+                  />
+                ) : (
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => setShowReviewPanel(true)}
+                    style={{ padding: "4px 0" }}
+                  >
+                    展开 AI 评审面板
+                  </Button>
+                )}
+              </div>
+            )}
+            {/* 追加生成入口 */}
+            {displayResult && (
+              <div style={{ marginTop: 0 }}>
+                {showAppendPanel ? (
+                  <AppendGenerate
+                    modelKey={selectedModelKey}
+                    requirementText={requirementText}
+                    onAppended={(cases) => {
+                      // Could merge into the result display
+                    }}
+                  />
+                ) : (
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => setShowAppendPanel(true)}
+                    style={{ padding: "4px 0" }}
+                  >
+                    追加生成遗漏用例
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </Col>
       </Row>
