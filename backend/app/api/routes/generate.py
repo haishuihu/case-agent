@@ -545,25 +545,29 @@ def export_generation(
         markdown=generation_record.output_markdown,
     )
 
+    # 文件名来源：优先取上传文档的标题，没有文档则用需求文本
+    doc_titles = [att.filename for att in generation_record.attachments]
+    filename_source = doc_titles[0] if doc_titles else generation_record.requirement_text
+
     export_format = export_format.lower()
     if export_format == "md":
         md_content = build_skill_template_markdown(
             cases=cases,
             metadata=metadata,
             requirement_text=generation_record.requirement_text,
-            document_titles=[att.filename for att in generation_record.attachments],
+            document_titles=doc_titles,
         )
         content = md_content.encode("utf-8")
         media_type = "text/markdown; charset=utf-8"
-        filename = _build_filename(generation_record.requirement_text, "测试用例.md")
+        filename = _build_filename(filename_source, "测试用例.md")
     elif export_format == "csv":
         content = build_csv_bytes(cases)
         media_type = "text/csv; charset=utf-8"
-        filename = _build_filename(generation_record.requirement_text, "测试用例.csv")
+        filename = _build_filename(filename_source, "测试用例.csv")
     elif export_format == "xlsx":
         content = build_xlsx_bytes(cases, metadata)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        filename = _build_filename(generation_record.requirement_text, "测试用例.xlsx")
+        filename = _build_filename(filename_source, "测试用例.xlsx")
     else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的导出格式。")
 

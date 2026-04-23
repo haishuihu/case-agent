@@ -39,24 +39,21 @@ def _sanitize_filename(text: str) -> str:
 def _build_filename(title: str | None, suffix: str) -> str:
     """Build a clean filename from task title, e.g. '商品营销视频生成测试用例.md'."""
     if title:
-        short = _sanitize_filename(title)[:20]
-        if short:
-            return f"{short}{suffix}"
+        clean = _sanitize_filename(title)
+        # Strip any existing file extension the title might carry (e.g. ".md" from document titles)
+        clean = re.sub(r"\.(md|csv|xlsx|pdf|docx?|txt)$", "", clean, flags=re.IGNORECASE)
+        if clean:
+            return f"{clean}{suffix}"
     return f"测试用例{suffix}"
 
 
 def _content_disposition(filename: str) -> str:
     """RFC 5987-compatible Content-Disposition with encoded fallback."""
     safe = _sanitize_filename(filename)
-    # RFC 2616 Latin-1 for ASCII, RFC 5987 UTF-8 for non-ASCII
-    try:
-        filename.encode("latin-1")
-        latin1 = safe
-        utf8 = quote(safe, safe="")
-    except UnicodeEncodeError:
-        latin1 = safe.encode("latin-1", "replace").decode("latin-1")
-        utf8 = quote(safe, safe="")
-    return f"attachment; filename*=UTF-8''{utf8}; filename=\"{latin1}\""
+    utf8_encoded = quote(safe, safe="")
+    # filename*= carries the UTF-8 percent-encoded name (RFC 5987)
+    # filename= carries the same value (URL-encoded ASCII) as fallback for older clients
+    return f"attachment; filename*=UTF-8''{utf8_encoded}; filename=\"{utf8_encoded}\""
 
 
 def _case_row(case: TestCaseItem) -> list[str]:

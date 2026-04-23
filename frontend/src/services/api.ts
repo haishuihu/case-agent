@@ -760,8 +760,15 @@ export async function downloadGenerationExport(
   }
 
   const disposition = response.headers.get("content-disposition") ?? "";
-  const match = disposition.match(/filename="([^"]+)"/);
-  const filename = match?.[1] ?? `testcases.${format}`;
+  // Prefer filename*=UTF-8'' (RFC 5987, carries UTF-8 encoded filename)
+  const starMatch = disposition.match(/filename\*=UTF-8''([^;]+)/);
+  let filename: string;
+  if (starMatch) {
+    filename = decodeURIComponent(starMatch[1]);
+  } else {
+    const plainMatch = disposition.match(/filename="([^"]+)"/);
+    filename = plainMatch?.[1] ?? `testcases.${format}`;
+  }
 
   return {
     blob: await response.blob(),
