@@ -13,9 +13,24 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.core.config import get_settings
-from app.db.migrate import ensure_generation_record_columns
+from app.db.migrate import (
+    ensure_append_generate_table,
+    ensure_case_review_tables,
+    ensure_defect_table,
+    ensure_generation_record_columns,
+    ensure_impact_tables,
+    ensure_quick_generate_table,
+    ensure_regression_execution_table,
+    ensure_submission_tables,
+)
 from app.db.session import Base, engine, SessionLocal
 from app.models import generation  # noqa: F401
+from app.models import case_review  # noqa: F401 - ensure models are registered
+from app.models import defect  # noqa: F401 - ensure models are registered
+from app.models import impact  # noqa: F401 - ensure models are registered
+from app.models import quick_generate  # noqa: F401 - ensure models are registered
+from app.models import regression_execution  # noqa: F401 - ensure models are registered
+from app.models import submission  # noqa: F401 - ensure models are registered
 from app.services.generation_worker import fail_stale_running_task
 
 settings = get_settings()
@@ -34,8 +49,18 @@ app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 @app.on_event("startup")
 def on_startup() -> None:
+    # Ensure we always pick up the latest .env on startup, even when running with --reload
+    get_settings.cache_clear()
+
     Base.metadata.create_all(bind=engine)
     ensure_generation_record_columns(engine)
+    ensure_submission_tables(engine)
+    ensure_impact_tables(engine)
+    ensure_regression_execution_table(engine)
+    ensure_quick_generate_table(engine)
+    ensure_case_review_tables(engine)
+    ensure_append_generate_table(engine)
+    ensure_defect_table(engine)
 
     # 启动时清理历史遗留的超时僵尸 running 任务
     db = SessionLocal()

@@ -557,6 +557,111 @@ export async function summarizeRequirementFromFiles(
   return (await response.json()) as RequirementSummaryResult;
 }
 
+export interface QuickGenerateResult {
+  content: string;
+  modelName: string;
+  generatedAt: string;
+}
+
+export async function quickGenerate(
+  requirementText: string,
+  documentFiles: File[],
+  imageFiles: File[],
+  modelKey?: string,
+): Promise<QuickGenerateResult> {
+  const formData = new FormData();
+  formData.append("requirement_text", requirementText);
+  if (modelKey) {
+    formData.append("modelKey", modelKey);
+  }
+  documentFiles.forEach((file) => {
+    formData.append("documentFiles", file);
+  });
+  imageFiles.forEach((file) => {
+    formData.append("imageFiles", file);
+  });
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/generate/quick`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(payload.detail ?? "快速生成失败，请稍后重试。");
+  }
+
+  return (await response.json()) as QuickGenerateResult;
+}
+
+// ============================================================
+// Quick Generate History
+// ============================================================
+
+export interface QuickHistoryItem {
+  id: string;
+  requirementPreview: string;
+  outputContent: string;
+  modelName: string;
+  createdAt: string;
+}
+
+export interface QuickHistoryListResponse {
+  items: QuickHistoryItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+function _buildQs(params: { page?: number; pageSize?: number }): string {
+  const p = new URLSearchParams();
+  if (params.page != null) p.set("page", String(params.page));
+  if (params.pageSize != null) p.set("pageSize", String(params.pageSize));
+  return p.toString();
+}
+
+export async function listQuickGenerateHistory(
+  params: { page?: number; pageSize?: number } = {},
+): Promise<QuickHistoryListResponse> {
+  const qs = _buildQs(params);
+  const path = `/api/v1/generate/quick/history${qs ? `?${qs}` : ""}`;
+  const abs = resolveApiAbsoluteUrl(path);
+
+  let response: Response;
+  try {
+    response = await fetch(abs);
+  } catch (e) {
+    if (isAbortError(e)) throw e;
+    logApiFailure("listQuickGenerateHistory:network", { url: abs, error: e });
+    const hint = e instanceof Error ? e.message : String(e);
+    throw new Error(`加载快速生成历史失败（网络）：${hint}\n请求：GET ${abs}`);
+  }
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(payload.detail ?? `加载快速生成历史失败（HTTP ${response.status}）`);
+  }
+
+  return (await response.json()) as QuickHistoryListResponse;
+}
+
+export interface QuickHistoryClearResponse {
+  ok: boolean;
+  deletedCount: number;
+}
+
+export async function clearQuickGenerateHistory(): Promise<QuickHistoryClearResponse> {
+  const path = "/api/v1/generate/quick/history";
+  const abs = resolveApiAbsoluteUrl(path);
+
+  const response = await fetch(abs, { method: "DELETE" });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(payload.detail ?? "清空历史失败。");
+  }
+  return (await response.json()) as QuickHistoryClearResponse;
+}
+
 export async function listModels(): Promise<ModelOption[]> {
   const path = "/api/v1/models";
   const url = apiFetchPath(path);
@@ -657,7 +762,7 @@ export interface KnowledgeDocumentUpdatePayload {
   structuredPayload?: Record<string, unknown> | null;
 }
 
-async function jsonRequest<T>(url: string, options: RequestInit): Promise<T> {
+export async function jsonRequest<T>(url: string, options: RequestInit): Promise<T> {
   const response = await fetch(url, options);
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { detail?: string };
@@ -767,4 +872,39 @@ export async function downloadGenerationExport(
     blob: await response.blob(),
     filename,
   };
+}
+
+export interface AppendedCase {
+  title: string;
+  category: string;
+  priority: string;
+  module: string;
+  missing_reason: string;
+  preconditions: string[];
+  steps: string[];
+  expectedResult: string;
+}
+
+export interface AppendGenerateResult {
+  appendedCases: AppendedCase[];
+  totalCount: number;
+  modelName: string;
+  generatedAt: string;
+  summary: string;
+}
+
+export async function appendGenerateCases(
+  existingCases: string,
+  requirementText: string,
+  modelKey?: string,
+): Promise<AppendGenerateResult> {
+  return jsonRequest(`${API_BASE_URL}/api/v1/generate/append`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      existingCases,
+      requirementText,
+      modelKey,
+    }),
+  });
 }

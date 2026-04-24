@@ -15,7 +15,11 @@ from app.core.config import get_settings
 from app.db.session import get_db_session
 from app.models.generation import GenerationAttachment, GenerationRecord
 from app.schemas.generate import (
+    AppendGenerateRequest,
+    AppendGenerateResponse,
+    AppendedCaseItem,
     GenerateResponse,
+    QuickGenerateResponse,
     RequirementSummaryResponse,
     ReviewModuleItem,
     ReviewResponse,
@@ -277,6 +281,76 @@ async def summarize_requirement(
     )
 
 
+@router.post("/generate/quick", response_model=QuickGenerateResponse)
+async def quick_generate(
+    requirement_text: Annotated[str, Form()],
+    model_key: Annotated[Optional[str], Form(alias="modelKey")] = None,
+    document_files: Annotated[Optional[list[UploadFile]], File(alias="documentFiles")] = None,
+    image_files: Annotated[Optional[list[UploadFile]], File(alias="imageFiles")] = None,
+    db: Session = Depends(get_db_session),
+) -> QuickGenerateResponse:
+    """
+    极简模式：单次 LLM 调用，输出精简的测试要点（Bullet Point 格式）。
+
+    目标响应时间 < 30 秒，适合临时需求和快速场景。
+    不生成完整用例格式，只输出核心流程/边界条件/异常场景/关键检查要点。
+    """
+    requirement_text = requirement_text.strip()
+    if not requirement_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="需求描述不能为空。",
+        )
+
+    try:
+        llm_client = build_llm_client(model_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    from app.prompts.quick_prompt import SYSTEM_PROMPT_QUICK, build_quick_prompt
+    from app.services.file_parser import DocumentContext, ImageContext, parse_document_upload, parse_image_upload
+
+    document_contexts: list[DocumentContext] = []
+    for upload in (document_files or []):
+        document_contexts.append(await parse_document_upload(upload))
+
+    image_contexts: list[ImageContext] = []
+    for upload in (image_files or []):
+        image_contexts.append(await parse_image_upload(upload))
+
+    try:
+        user_prompt = build_quick_prompt(requirement_text, document_contexts, image_contexts)
+        result = llm_client.create_chat_completion(
+            system_prompt=SYSTEM_PROMPT_QUICK,
+            user_content=user_prompt,
+            max_tokens=2048,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="快速生成失败，请稍后重试。",
+        ) from exc
+
+    # 保存历史记录
+    from app.models.quick_generate import QuickGenerateRecord
+    record = QuickGenerateRecord(
+        requirement_text=requirement_text,
+        model_name=llm_client.profile.model_name,
+        output_content=result.content,
+        client_model_key=model_key,
+    )
+    db.add(record)
+    db.commit()
+
+    return QuickGenerateResponse(
+        content=result.content,
+        modelName=llm_client.profile.model_name,
+        generatedAt=datetime.now(timezone.utc),
+    )
+
+
 @router.post("/generate", response_model=GenerateResponse)
 async def generate_testcases(
     requirement_text: Annotated[str, Form(...)],
@@ -371,6 +445,87 @@ async def generate_testcases(
         createdAt=generation_record.created_at,
         cases=result.cases,
         metadata=result.metadata,
+    )
+
+
+@router.post("/generate/append", response_model=AppendGenerateResponse)
+async def append_generate_cases(
+    request: AppendGenerateRequest,
+    db: Session = Depends(get_db_session),
+) -> AppendGenerateResponse:
+    """
+    追加生成：根据已有用例和需求描述，AI 分析遗漏场景并补充用例。
+    """
+    if not request.existing_cases.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="已有用例内容不能为空。",
+        )
+    if not request.requirement_text.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="需求描述不能为空。",
+        )
+
+    try:
+        llm_client = build_llm_client(request.model_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    from app.prompts.append_prompt import build_append_prompt
+
+    try:
+        prompt = build_append_prompt(request.existing_cases, request.requirement_text)
+        result = llm_client.create_chat_completion(
+            system_prompt="你是一个资深测试工程师，需要分析已有用例的遗漏场景并补充用例。",
+            user_content=prompt,
+            max_tokens=4000,
+            response_format={"type": "json_object"},
+        )
+        parsed = json.loads(result.content)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="追加生成解析失败，请稍后重试。",
+        ) from None
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="追加生成失败，请稍后重试。",
+        ) from exc
+
+    appended = [
+        AppendedCaseItem(
+            title=c.get("title", ""),
+            category=c.get("category", "功能测试"),
+            priority=c.get("priority", "P1"),
+            module=c.get("module", ""),
+            missing_reason=c.get("missing_reason", ""),
+            preconditions=c.get("preconditions", []),
+            steps=c.get("steps", []),
+            expected_result=c.get("expected_result", ""),
+        )
+        for c in parsed.get("appended_cases", [])
+    ]
+
+    from app.models.append_generate import AppendGenerateRecord
+    record = AppendGenerateRecord(
+        existing_cases=request.existing_cases,
+        requirement_text=request.requirement_text,
+        model_name=llm_client.profile.model_name,
+        appended_content=json.dumps(parsed.get("appended_cases", []), ensure_ascii=False),
+        total_count=len(appended),
+        client_model_key=request.model_key,
+    )
+    db.add(record)
+    db.commit()
+
+    return AppendGenerateResponse(
+        appendedCases=appended,
+        totalCount=len(appended),
+        modelName=llm_client.profile.model_name,
+        generatedAt=datetime.now(timezone.utc),
+        summary=parsed.get("summary", f"已补充 {len(appended)} 个遗漏场景。"),
     )
 
 

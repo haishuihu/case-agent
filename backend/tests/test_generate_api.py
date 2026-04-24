@@ -1,4 +1,5 @@
 from io import BytesIO
+import json
 
 from fastapi.testclient import TestClient
 
@@ -7,18 +8,28 @@ from app.core.config import ModelProfile
 from app.main import app
 from app.services import generation_worker as generation_worker_mod
 from app.schemas.testcase import GenerationMetadata, TestCaseItem
-from app.services.llm_client import LLMGenerationResult
+from app.services.llm_client import ChatCompletionResult, LLMGenerationResult
+
+
+class StubProfile:
+    def __init__(self):
+        self.key = "stub"
+        self.label = "Stub Model"
+        self.provider = "stub"
+        self.base_url = "https://example.invalid/v1"
+        self.api_key = "stub-key"
+        self.model_name = "stub-model"
+        self.max_output_tokens = 4096
+        self.timeout = 60
+
+
+class StubSettings:
+    llm_cache_enabled = False
 
 
 class StubLLMClient:
-    profile = ModelProfile(
-        key="stub",
-        label="Stub Model",
-        provider="stub",
-        base_url="https://example.invalid/v1",
-        api_key="stub-key",
-        model_name="stub-model",
-    )
+    profile = StubProfile()
+    settings = StubSettings()
 
     def generate_test_cases(
         self,
@@ -71,6 +82,23 @@ class StubLLMClient:
                 truncated=False,
                 incompleteCategories=[],
             ),
+        )
+
+    def create_chat_completion(self, system_prompt: str, user_content: str, **kwargs) -> ChatCompletionResult:
+        """Stub for /generate/review and other single-call LLM endpoints."""
+        return ChatCompletionResult(
+            content=json.dumps({
+                "modules": [
+                    {"id": "M01", "name": "登录模块", "description": "用户登录核心功能",
+                     "sub_features": ["手机号输入", "验证码发送"]}
+                ],
+                "questions": [],
+                "business_rules": ["验证码 60 秒有效"],
+                "data_constraints": [{"type": "phone", "description": "手机号格式"}],
+            }),
+            raw_response="",
+            model_name="stub-model",
+            finish_reason="stop",
         )
 
     def summarize_requirement_from_files(self, requirement_text, document_contexts, image_contexts):
@@ -273,3 +301,51 @@ def test_stale_running_task_marked_failed_on_get() -> None:
         body = resp.json()
         assert body["status"] == "failed", f"expected failed, got {body['status']}"
         assert body.get("errorMessage"), f"expected non-empty errorMessage, got {body.get('errorMessage')}"
+
+
+# ----------------------------------------------------------------------
+# TC-014 ~ TC-015: 回归测试 - 确保新增功能未破坏已有 API
+# ----------------------------------------------------------------------
+
+
+def test_existing_generate_summary_still_works() -> None:
+    """TC-014: 原有 /generate/summary API 仍然正常"""
+    original_builder = generate_routes.build_llm_client
+    generate_routes.build_llm_client = lambda model_key=None: StubLLMClient()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/generate/summary",
+                data={"requirement_text": "用户登录功能"},
+            )
+        assert response.status_code == 200
+        payload = response.json()
+        assert "summaryText" in payload
+        assert "modules" in payload
+        assert isinstance(payload["modules"], list)
+        assert payload["businessRules"] == ["验证码 60 秒有效"]
+        assert payload["modelName"] == "stub-model"
+    finally:
+        generate_routes.build_llm_client = original_builder
+
+
+def test_existing_generate_review_still_works() -> None:
+    """TC-015: 原有 /generate/review API 仍然正常"""
+    original_builder = generate_routes.build_llm_client
+    generate_routes.build_llm_client = lambda model_key=None: StubLLMClient()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/generate/review",
+                data={"requirement_text": "用户登录功能"},
+            )
+        assert response.status_code == 200
+        payload = response.json()
+        assert "modules" in payload
+        assert "questions" in payload
+        assert isinstance(payload["modules"], list)
+        assert payload["businessRules"] == ["验证码 60 秒有效"]
+        assert payload["dataConstraints"] == [{"type": "phone", "description": "手机号格式"}]
+        assert payload["modelName"] == "stub-model"
+    finally:
+        generate_routes.build_llm_client = original_builder

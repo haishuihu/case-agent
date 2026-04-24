@@ -2356,3 +2356,537 @@ body {
     padding: var(--space-sm);
   }
 }
+
+/* ============================================================
+   Submission Module Styles
+   ============================================================ */
+
+/* Submission list page */
+.submission-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.submission-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  background:
+    linear-gradient(135deg, rgba(0, 113, 227, 0.04) 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg-card) 0%, rgba(245, 245, 247, 0.8) 100%);
+  border: 1px solid rgba(0, 113, 227, 0.1);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.submission-filter-bar {
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 113, 227, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.submission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-lg);
+}
+
+/* Submission card */
+.submission-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 113, 227, 0.15);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.submission-card:hover {
+  border-color: rgba(0, 113, 227, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.submission-card.has-high-risk {
+  border-left: 4px solid var(--color-danger);
+}
+
+.submission-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.submission-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.submission-card-modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.submission-card-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-sm) 0;
+}
+
+.submission-card-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.submission-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-light);
+  margin-top: auto;
+}
+
+/* Submission create page */
+.submission-create-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.submission-page-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  background:
+    linear-gradient(135deg, rgba(0, 113, 227, 0.04) 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg-card) 0%, rgba(245, 245, 247, 0.8) 100%);
+  border: 1px solid rgba(0, 113, 227, 0.1);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+/* Submission form */
+.submission-form .ant-form-item {
+  margin-bottom: var(--space-md);
+}
+
+/* Submission detail page */
+.submission-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.submission-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-lg) var(--space-xl);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 113, 227, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.submission-detail-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  background:
+    linear-gradient(135deg, rgba(0, 113, 227, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg-card) 0%, rgba(245, 245, 247, 0.8) 100%);
+  border: 1px solid rgba(0, 113, 227, 0.12);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.submission-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.submission-detail-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.submission-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-sm);
+}
+
+.submission-detail-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Checklist panel */
+.checklist-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 113, 227, 0.12);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.checklist-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-md);
+  gap: var(--space-md);
+}
+
+.checklist-panel-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checklist-progress {
+  margin-bottom: var(--space-md);
+  padding: var(--space-md);
+  background: rgba(245, 245, 247, 0.5);
+  border-radius: var(--radius-md);
+}
+
+.checklist-progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.checklist-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-2xl) var(--space-lg);
+  text-align: center;
+}
+
+.checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.checklist-risk-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.checklist-risk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  transition: all var(--transition-fast);
+}
+
+.checklist-item:hover {
+  border-color: rgba(0, 113, 227, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.checklist-item.high-risk {
+  border-left: 4px solid var(--color-danger);
+  background: rgba(255, 59, 48, 0.03);
+}
+
+.checklist-item.medium-risk {
+  border-left: 4px solid var(--color-warning);
+}
+
+.checklist-item.low-risk {
+  border-left: 4px solid var(--border-card);
+}
+
+.checklist-item.is-checked {
+  opacity: 0.7;
+  background: rgba(52, 199, 89, 0.05);
+}
+
+.checklist-item-check {
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+
+.checklist-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.checklist-item-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Gate result panel */
+.gate-result-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 113, 227, 0.12);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.gate-result-panel.passed {
+  border-left: 4px solid var(--color-success);
+}
+
+.gate-result-panel.rejected {
+  border-left: 4px solid var(--color-danger);
+  background: rgba(255, 59, 48, 0.03);
+}
+
+.gate-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-md);
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.gate-result-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.gate-result-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.gate-result-list {
+  margin: 0;
+  padding-left: var(--space-md);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .submission-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .submission-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .submission-detail-header,
+  .submission-detail-title,
+  .checklist-panel-header,
+  .gate-result-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ============================================================
+   Quick Generate Page - Glass Card Layout
+   ============================================================ */
+
+.quick-generate-card {
+  margin-bottom: var(--space-xl);
+}
+
+.quick-generate-card .card-section-stack {
+  gap: 0;
+}
+
+/* 模型选择行 */
+.quick-generate-card .model-select-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 113, 227, 0.08);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+
+.quick-generate-card .model-select-row .ant-select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 参考资料折叠区 */
+.quick-generate-card .requirement-refs-collapse {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.quick-generate-card .requirement-refs-collapse .ant-collapse-content-box {
+  padding: 12px 0 4px;
+}
+
+/* 上传区域 */
+.quick-generate-card .requirement-uploads-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.quick-generate-card .requirement-upload-col--doc {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.quick-generate-card .requirement-upload-col--img {
+  flex: 0 0 auto;
+}
+
+/* 上传列表 */
+.quick-generate-card .requirement-upload-col--doc .ant-upload-list {
+  margin-top: 8px;
+}
+
+.quick-generate-card .requirement-upload-col--doc .ant-upload-list-item {
+  border-radius: var(--radius-sm);
+}
+
+.quick-generate-card .requirement-upload-col--doc .ant-upload-list-item:hover {
+  background: rgba(0, 113, 227, 0.04);
+}
+
+.quick-generate-card .requirement-upload-col--doc .ant-upload-list-item-name {
+  color: var(--text-secondary);
+}
+
+.quick-generate-card .requirement-upload-item-tooltip-host .ant-upload-list-item-name {
+  max-width: 100%;
+}
+
+/* 就绪状态卡 */
+.quick-generate-card .readiness-card {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--bg-inset);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* 生成按钮区 */
+.quick-generate-card .generate-cta {
+  margin-top: 20px;
+}
+
+.quick-generate-card .generate-cta .ant-btn-primary {
+  height: 44px;
+  font-size: 14px;
+}
+
+/* 结果卡片 */
+.quick-result-card {
+  margin-bottom: var(--space-xl);
+}
+
+/* 快速生成历史记录抽屉 */
+.quick-history-drawer .ant-drawer-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.quick-history-drawer .ant-drawer-body {
+  padding: 0;
+}
+
+.quick-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.quick-history-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.quick-history-row:hover {
+  background: rgba(0, 113, 227, 0.04);
+}
+
+.quick-history-preview {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.quick-history-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.quick-history-empty {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
