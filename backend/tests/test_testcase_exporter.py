@@ -5,6 +5,7 @@ from openpyxl import load_workbook
 from app.schemas.testcase import GenerationMetadata, TestCaseItem
 from app.services.testcase_exporter import (
     _build_filename,
+    _content_disposition,
     _sanitize_filename,
     build_markdown_table,
     build_skill_template_markdown,
@@ -160,6 +161,19 @@ def test_sanitize_filename_removes_illegal_chars() -> None:
 
 def test_build_filename_from_title() -> None:
     assert _build_filename("商品营销视频生成", "测试用例.md") == "商品营销视频生成测试用例.md"
-    assert _build_filename("A" * 30, ".csv") == ("A" * 20) + ".csv"
+    assert _build_filename("A" * 30, ".csv") == ("A" * 30) + ".csv"
     assert _build_filename("", ".xlsx") == "测试用例.xlsx"
     assert _build_filename(None, ".md") == "测试用例.md"
+    # Strips .md/.csv/.xlsx/.pdf/.docx/.txt extensions from title before appending suffix
+    assert _build_filename("大师创作资产改为资产库.md", "测试用例.md") == "大师创作资产改为资产库测试用例.md"
+    assert _build_filename("需求文档.CSV", "测试用例.csv") == "需求文档测试用例.csv"
+    assert _build_filename("测试.TXT", "测试用例.txt") == "测试测试用例.txt"
+
+
+def test_content_disposition_is_ascii_safe() -> None:
+    import re
+
+    header = _content_disposition("商品营销测试用例.md")
+    assert "filename*=UTF-8''" in header
+    m = re.search(r'filename="([^"]+)"', header)
+    assert m and m.group(1) == "%E5%95%86%E5%93%81%E8%90%A5%E9%94%80%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B.md"
