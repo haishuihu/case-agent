@@ -21,6 +21,7 @@ from app.schemas.submission import (
     SubmissionUpdate,
 )
 from app.services.checklist_generator import ChecklistGenerator
+from app.services.impact_analyzer import ImpactAnalyzer
 
 router = APIRouter(prefix="/submissions", tags=["submissions"])
 logger = logging.getLogger(__name__)
@@ -337,16 +338,24 @@ def analyze_impact(
     affected_modules: str = Query(default="", description="影响模块，逗号分隔"),
     db: Session = Depends(get_db_session),
 ) -> dict[str, object]:
-    """分析代码变更影响"""
+    """分析代码变更影响（使用与 /impact-analysis 相同的分析引擎）"""
     modules_list = [m.strip() for m in affected_modules.split(",") if m.strip()]
 
-    generator = ChecklistGenerator()
-    result = generator.analyze_impact(
+    analyzer = ImpactAnalyzer()
+    result = analyzer.analyze(
         git_diff=git_diff,
         affected_modules=modules_list,
     )
 
-    return result
+    # 转换为与原接口兼容的简化格式
+    return {
+        "impacted_modules": [m["module_name"] for m in result["impacted_modules"]],
+        "indirect_impacts": result.get("indirect_impacts", []),
+        "data_flow_impacts": result.get("data_flow_impacts", []),
+        "api_breaking_changes": result.get("api_breaking_changes", []),
+        "risk_points": result.get("risk_points", []),
+        "confidence_level": result.get("confidence_level", "medium"),
+    }
 
 
 @router.get("/{submission_id}/checklist", response_model=list[ChecklistItemResponse])

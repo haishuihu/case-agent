@@ -72,12 +72,12 @@ export interface RequirementSummaryResult {
  *
  * 若需在开发环境直连其它地址，可设置 `VITE_DEV_DIRECT_API=1` 并配置 `VITE_API_BASE_URL`。
  */
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env.DEV && import.meta.env.VITE_DEV_DIRECT_API !== "1"
     ? ""
     : (import.meta.env.VITE_API_BASE_URL ?? "");
 
-function apiFetchPath(pathWithLeadingSlash: string): string {
+export function apiFetchPath(pathWithLeadingSlash: string): string {
   const p = pathWithLeadingSlash.startsWith("/")
     ? pathWithLeadingSlash
     : `/${pathWithLeadingSlash}`;

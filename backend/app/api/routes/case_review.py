@@ -22,6 +22,8 @@ from app.schemas.case_review import (
 )
 from app.services.case_review_service import CaseReviewService
 
+from pydantic import ValidationError
+
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 logger = logging.getLogger(__name__)
 
@@ -45,8 +47,25 @@ def _deserialize_ai_details(raw: Optional[str]) -> Optional[AIReviewResult]:
         return None
     try:
         data = json.loads(raw)
+
+        def _normalize_dimensions(dims):
+            if not isinstance(dims, list):
+                return dims
+            cleaned = []
+            for dim in dims:
+                cleaned.append({
+                    "dimension": dim.get("dimension") or dim.get("dimension_name", ""),
+                    "label": dim.get("label", ""),
+                    "score": dim.get("score", 0),
+                    "description": dim.get("description", ""),
+                })
+            return cleaned
+
+        if "dimensions" in data and isinstance(data["dimensions"], list):
+            data["dimensions"] = _normalize_dimensions(data["dimensions"])
         return AIReviewResult(**data)
-    except (json.JSONDecodeError, TypeError):
+    except (json.JSONDecodeError, TypeError, ValidationError) as exc:
+        logger.warning("[case-review] deserialize ai_details failed: %s", exc)
         return None
 
 

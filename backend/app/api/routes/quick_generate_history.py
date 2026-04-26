@@ -13,7 +13,7 @@ from app.schemas.generate import (
     QuickHistoryListResponse,
 )
 
-router = APIRouter(prefix="/api/v1/generate/quick", tags=["quick-generate"])
+router = APIRouter(prefix="/generate/quick", tags=["quick-generate"])
 
 
 def _preview_requirement(text: str, max_len: int = 80) -> str:

@@ -6,7 +6,9 @@ import {
   HistoryOutlined,
   ReloadOutlined,
   DeleteOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 
 import { RequirementInput } from "../components/RequirementInput";
@@ -37,6 +39,7 @@ function normalizeFiles(fileList: UploadFile[]): File[] {
 }
 
 export function GeneratorPage() {
+  const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const {
     taskId,
@@ -382,6 +385,21 @@ export function GeneratorPage() {
             />
             {displayResult && (
               <div style={{ marginTop: 0 }}>
+                <Space style={{ marginBottom: 8 }}>
+                  <Button
+                    type="default"
+                    icon={<SafetyCertificateOutlined />}
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      if (displayResult?.generationId) params.set("generationId", displayResult.generationId);
+                      params.set("requirementText", requirementText);
+                      params.set("generatedCases", generatedCases);
+                      navigate(`/reviews?${params.toString()}`);
+                    }}
+                  >
+                    提交评审
+                  </Button>
+                </Space>
                 {showReviewPanel ? (
                   <ReviewPanel
                     requirementText={requirementText}
