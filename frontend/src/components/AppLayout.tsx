@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Layout, Menu, Space, Typography } from "antd";
+import { Button, Layout, Menu, Space, Typography } from "antd";
 import {
   ExperimentOutlined,
   BookOutlined,
@@ -11,6 +11,7 @@ import {
   ThunderboltOutlined,
   SafetyCertificateOutlined,
   BugOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -97,8 +98,15 @@ export function AppLayout() {
               智能测试助手
             </h2>
           </div>
-          <Space size="large" className="app-header-right">
+          <Space size="middle" className="app-header-right">
             {taskHint}
+            <Button
+              type="text"
+              icon={<SettingOutlined style={{ fontSize: 18 }} />}
+              onClick={() => navigate("/settings")}
+              style={{ color: "var(--text-secondary)" }}
+              title="模型配置"
+            />
             <Menu
               mode="horizontal"
               selectedKeys={[activeKey]}

@@ -2890,3 +2890,194 @@ body {
   color: var(--text-muted);
 }
 
+/* ============================================================
+   Config Page
+   ============================================================ */
+.config-tabs .ant-tabs-nav {
+  margin-bottom: var(--space-lg);
+}
+
+.config-tabs .ant-tabs-tab {
+  padding: 10px 16px !important;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+}
+
+.config-tabs .ant-tabs-tab:hover {
+  background: rgba(0, 113, 227, 0.05);
+}
+
+.config-tabs .ant-tabs-tab-active {
+  background: rgba(0, 113, 227, 0.1) !important;
+}
+
+.config-tabs .ant-tabs-ink-bar {
+  background: var(--color-primary) !important;
+  border-radius: 2px;
+  height: 3px !important;
+}
+
+.config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.config-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.config-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 113, 227, 0.15) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.config-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  opacity: 0.8;
+}
+
+.config-card:hover {
+  border-color: rgba(0, 113, 227, 0.3) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+.config-card .ant-card-head {
+  border-bottom: 1px solid var(--border-light);
+  padding: var(--space-md) var(--space-lg);
+  min-height: unset;
+}
+
+.config-card .ant-card-head-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.config-card .ant-card-body {
+  padding: var(--space-md) var(--space-lg);
+}
+
+.config-card .ant-card-actions {
+  border-top: 1px solid var(--border-light);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.01) 0%, transparent 100%);
+}
+
+.config-card .ant-card-actions > li {
+  border-right: 1px solid var(--border-light) !important;
+}
+
+.config-card .ant-card-actions > li:last-child {
+  border-right: none !important;
+}
+
+.config-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.config-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.config-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.config-system-panel {
+  padding: var(--space-xl);
+}
+
+.config-modal .ant-modal-content {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.config-modal .ant-modal-body {
+  max-height: min(70vh, 700px);
+  overflow-y: auto;
+  padding: var(--space-lg) var(--space-xl);
+}
+
+.config-modal .ant-modal-footer {
+  padding: var(--space-md) var(--space-xl);
+  border-top: 1px solid var(--border-light);
+}
+
+.config-form .ant-form-item {
+  margin-bottom: var(--space-md);
+}
+
+.config-form .ant-form-item-label > label {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.config-form .ant-form-item-extra {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.config-test-row {
+  padding: var(--space-md);
+  background: var(--bg-inset);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.model-select-row .ant-btn[type="text"] {
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  transition: all var(--transition-fast);
+}
+
+.model-select-row .ant-btn[type="text"]:hover {
+  background: rgba(0, 113, 227, 0.08);
+  color: var(--color-primary) !important;
+}
+
+@media (max-width: 768px) {
+  .config-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .config-modal .ant-modal-body {
+    padding: var(--space-md);
+  }
+
+  .config-modal .ant-modal-footer {
+    padding: var(--space-md);
+  }
+}

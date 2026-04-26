@@ -10,7 +10,9 @@ import {
   InboxOutlined,
   PictureOutlined,
   PaperClipOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 
 import type { ModelOption } from "../services/api";
@@ -68,6 +70,7 @@ export function RequirementInput({
   onModelChange,
   onSubmit,
 }: RequirementInputProps) {
+  const navigate = useNavigate();
   const hasContent = value.trim().length > 0;
   const charCount = value.length;
 
@@ -107,6 +110,15 @@ export function RequirementInput({
             }))}
             style={{ flex: 1 }}
           />
+          <Tooltip title="管理模型配置">
+            <Button
+              type="text"
+              size="small"
+              icon={<SettingOutlined style={{ fontSize: 13 }} />}
+              onClick={() => navigate("/settings")}
+              style={{ color: "var(--text-muted)" }}
+            />
+          </Tooltip>
         </div>
 
         <TextArea
