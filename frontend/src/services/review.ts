@@ -74,7 +74,8 @@ export async function createReview(payload: {
 }): Promise<CaseReview> {
   return jsonRequest(`${BASE}`, {
     method: "POST",
-    body: payload,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 
@@ -87,7 +88,8 @@ export async function runAIReview(payload: {
 }): Promise<CaseReview> {
   return jsonRequest(`${BASE}/ai-review`, {
     method: "POST",
-    body: payload,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 
@@ -123,7 +125,8 @@ export async function updateReviewStatus(
 ): Promise<CaseReview> {
   return jsonRequest(`${BASE}/${id}`, {
     method: "PATCH",
-    body: payload,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 
@@ -145,7 +148,8 @@ export async function addComment(
 ): Promise<ReviewComment> {
   return jsonRequest(`${BASE}/${reviewId}/comments`, {
     method: "POST",
-    body: payload,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 

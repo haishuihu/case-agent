@@ -1,13 +1,4 @@
-const API_BASE_URL = "";
-
-function apiFetchPath(pathWithLeadingSlash: string): string {
-  const p = pathWithLeadingSlash.startsWith("/")
-    ? pathWithLeadingSlash
-    : `/${pathWithLeadingSlash}`;
-  return /^https?:\/\//i.test(API_BASE_URL)
-    ? `${API_BASE_URL.replace(/\/$/, "")}${p}`
-    : `${API_BASE_URL}${p}`;
-}
+import { apiFetchPath, jsonRequest } from "./api";
 
 export type ExecutionStatus = "not_started" | "in_progress" | "passed" | "failed" | "blocked";
 
@@ -32,7 +23,7 @@ export async function updateExecutionStatus(
   recommendationId: string,
   payload: ExecutionUpdateRequest
 ): Promise<ExecutionUpdateResponse> {
-  const response = await fetch(
+  return jsonRequest(
     apiFetchPath(`/api/v1/regression/recommendations/${encodeURIComponent(recommendationId)}/execute`),
     {
       method: "POST",
@@ -40,22 +31,13 @@ export async function updateExecutionStatus(
       body: JSON.stringify(payload),
     }
   );
-  if (!response.ok) {
-    const payload_ = (await response.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(payload_.detail ?? "更新执行状态失败，请稍后重试。");
-  }
-  return (await response.json()) as ExecutionUpdateResponse;
 }
 
 export async function getExecutionStatus(
   recommendationId: string
 ): Promise<ExecutionUpdateResponse> {
-  const response = await fetch(
-    apiFetchPath(`/api/v1/regression/recommendations/${encodeURIComponent(recommendationId)}/execute`)
+  return jsonRequest(
+    apiFetchPath(`/api/v1/regression/recommendations/${encodeURIComponent(recommendationId)}/execute`),
+    { method: "GET" }
   );
-  if (!response.ok) {
-    const payload_ = (await response.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(payload_.detail ?? "获取执行状态失败，请稍后重试。");
-  }
-  return (await response.json()) as ExecutionUpdateResponse;
 }

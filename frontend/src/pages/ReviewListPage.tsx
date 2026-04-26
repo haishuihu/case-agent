@@ -18,6 +18,8 @@ import {
   Collapse,
   Alert,
   Progress,
+  Form,
+  Select,
 } from "antd";
 import {
   PlusOutlined,
@@ -28,13 +30,16 @@ import {
   ClockCircleOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   listReviews,
   deleteReview,
   updateReviewStatus,
+  createReview,
+  runAIReview,
   type CaseReview,
 } from "../services/review";
+import { listModels, type ModelOption } from "../services/api";
 
 const STATUS_FILTERS = [
   { label: "全部", value: "all" },
@@ -70,6 +75,137 @@ function ScoreTag({ score }: { score: number | null | undefined }) {
   if (score == null) return null;
   const color = score >= 80 ? "green" : score >= 60 ? "orange" : "red";
   return <Tag color={color}>{score}</Tag>;
+}
+
+interface CreateReviewModalProps {
+  open: boolean;
+  initialValues?: {
+    generationId?: string;
+    requirementText?: string;
+    generatedCases?: string;
+  };
+  onClose: () => void;
+  onSuccess: (review: CaseReview) => void;
+}
+
+function CreateReviewModal({ open, initialValues, onClose, onSuccess }: CreateReviewModalProps) {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [runAiImmediately, setRunAiImmediately] = useState(false);
+  const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      void listModels().then((opts) => setModelOptions(opts)).catch(() => {});
+      form.setFieldsValue({
+        caseTitle: initialValues?.requirementText?.slice(0, 80) ?? "",
+        requirementText: initialValues?.requirementText ?? "",
+        generatedCases: initialValues?.generatedCases ?? "",
+        generationId: initialValues?.generationId ?? "",
+      });
+    }
+  }, [open, form, initialValues]);
+
+  const handleSubmit = async (values: Record<string, unknown>) => {
+    setLoading(true);
+    try {
+      let review: CaseReview;
+      if (runAiImmediately) {
+        review = await runAIReview({
+          generationId: values.generationId as string | undefined,
+          caseTitle: values.caseTitle as string | undefined,
+          requirementText: values.requirementText as string,
+          generatedCases: values.generatedCases as string | undefined,
+          modelKey: values.modelKey as string | undefined,
+        });
+        message.success("AI 评审已完成");
+      } else {
+        review = await createReview({
+          generationId: values.generationId as string | undefined,
+          caseTitle: values.caseTitle as string | undefined,
+          requirementText: values.requirementText as string,
+          generatedCases: values.generatedCases as string | undefined,
+        });
+        message.success("评审记录已创建");
+      }
+      form.resetFields();
+      onSuccess(review);
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      title={
+        <Space>
+          <SafetyCertificateOutlined />
+          <span>新建评审</span>
+        </Space>
+      }
+      onCancel={onClose}
+      okText={runAiImmediately ? "发起 AI 评审" : "仅创建记录"}
+      cancelText="取消"
+      width={640}
+      confirmLoading={loading}
+      onOk={() => form.submit()}
+    >
+      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form.Item name="generationId" label="关联生成记录 ID">
+          <Input placeholder="可选，填写后可在详情页关联到生成记录" />
+        </Form.Item>
+        <Form.Item name="caseTitle" label="用例标题">
+          <Input placeholder="简要描述本次评审的用例集" />
+        </Form.Item>
+        <Form.Item
+          name="requirementText"
+          label="需求文本"
+          rules={[{ required: true, message: "请输入需求文本" }]}
+        >
+          <Input.TextArea rows={4} placeholder="描述需求背景、测试范围等" />
+        </Form.Item>
+        <Form.Item
+          name="generatedCases"
+          label="生成用例内容"
+          tooltip="可直接粘贴 AI 生成的用例内容，或留空后手动补充"
+        >
+          <Input.TextArea rows={6} placeholder="AI 生成的用例 Markdown 内容（可选）" />
+        </Form.Item>
+        <Form.Item name="modelKey" label="评审模型">
+          <Select
+            allowClear
+            placeholder="默认使用生成时所用的模型"
+            options={modelOptions.map((m) => ({ label: m.label, value: m.key }))}
+          />
+        </Form.Item>
+        <Form.Item name="runAi" label="评审方式">
+          <Space direction="vertical">
+            <Button
+              type={runAiImmediately ? "primary" : "default"}
+              icon={<ThunderboltOutlined />}
+              onClick={() => setRunAiImmediately(true)}
+            >
+              立即发起 AI 评审
+            </Button>
+            <Button
+              type={!runAiImmediately ? "primary" : "default"}
+              onClick={() => setRunAiImmediately(false)}
+            >
+              仅创建记录（稍后评审）
+            </Button>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {runAiImmediately
+                ? "将立即调用 AI 评审，耗时较长但完成后可直接查看结果"
+                : "将创建评审记录，稍后可进入详情页手动发起 AI 评审"}
+            </Typography.Text>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
 }
 
 interface ReviewDetailModalProps {
@@ -263,7 +399,7 @@ function ReviewDetailModal({ review, onClose, onRefresh }: ReviewDetailModalProp
 }
 
 export function ReviewListPage() {
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [reviews, setReviews] = useState<CaseReview[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -272,6 +408,20 @@ export function ReviewListPage() {
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedReview, setSelectedReview] = useState<CaseReview | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  const prefillFromQuery = {
+    generationId: searchParams.get("generationId") ?? undefined,
+    requirementText: searchParams.get("requirementText") ?? undefined,
+    generatedCases: searchParams.get("generatedCases") ?? undefined,
+  };
+
+  // Auto-open create modal when arriving with pre-fill data
+  useEffect(() => {
+    if (prefillFromQuery.generationId || prefillFromQuery.generatedCases) {
+      setCreateModalOpen(true);
+    }
+  }, []);
 
   const PAGE_SIZE = 20;
 
@@ -314,6 +464,12 @@ export function ReviewListPage() {
     if (selectedReview) setSelectedReview(null);
   };
 
+  const handleCreateSuccess = (review: CaseReview) => {
+    setCreateModalOpen(false);
+    setSelectedReview(review);
+    void handleRefresh();
+  };
+
   const overallStats = {
     total,
     pending: reviews.filter((r) => r.reviewStatus === "pending").length,
@@ -341,7 +497,7 @@ export function ReviewListPage() {
           <Tooltip title="刷新">
             <Button icon={<ReloadOutlined />} onClick={() => void handleRefresh()} />
           </Tooltip>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/")}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
             新建评审
           </Button>
         </Space>
@@ -389,8 +545,8 @@ export function ReviewListPage() {
           description={statusFilter !== "all" ? "该状态下暂无评审记录" : "暂无评审记录"}
           style={{ padding: 80 }}
         >
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/")}>
-            去生成用例
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+            新建评审
           </Button>
         </Empty>
       ) : (
@@ -510,6 +666,14 @@ export function ReviewListPage() {
           onRefresh={handleRefresh}
         />
       )}
+
+      {/* 新建评审弹窗 */}
+      <CreateReviewModal
+        open={createModalOpen}
+        initialValues={prefillFromQuery}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={handleCreateSuccess}
+      />
     </div>
   );
 }

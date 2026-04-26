@@ -3,6 +3,8 @@
 // Sprint 1: 提测质量门禁
 // ============================================================
 
+import { apiFetchPath, jsonRequest } from "./api";
+
 // ---- Types ----
 
 export interface ChecklistItem {
@@ -145,38 +147,12 @@ export interface SubmissionListResponse {
   pageSize: number;
 }
 
-// ---- API Base URL ----
-
-const API_BASE_URL =
-  import.meta.env.DEV && import.meta.env.VITE_DEV_DIRECT_API !== "1"
-    ? ""
-    : (import.meta.env.VITE_API_BASE_URL ?? "");
-
-function apiFetchPath(pathWithLeadingSlash: string): string {
-  const p = pathWithLeadingSlash.startsWith("/")
-    ? pathWithLeadingSlash
-    : `/${pathWithLeadingSlash}`;
-  return /^https?:\/\//i.test(API_BASE_URL)
-    ? `${API_BASE_URL.replace(/\/$/, "")}${p}`
-    : `${API_BASE_URL}${p}`;
-}
-
-async function jsonRequest<T>(url: string, options: RequestInit): Promise<T> {
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(payload.detail ?? "请求失败，请稍后重试。");
-  }
-  if (response.status === 204) return undefined as unknown as T;
-  return (await response.json()) as T;
-}
-
 // ---- API Functions ----
 
 export async function createSubmission(
   payload: CreateSubmissionPayload
 ): Promise<Submission> {
-  return jsonRequest(`${API_BASE_URL}/api/v1/submissions`, {
+  return jsonRequest(apiFetchPath("/api/v1/submissions"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -192,13 +168,13 @@ export async function listSubmissions(params?: {
   if (params?.page) qs.set("page", String(params.page));
   if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
   if (params?.status) qs.set("status", params.status);
-  return jsonRequest(`${API_BASE_URL}/api/v1/submissions?${qs}`, {
+  return jsonRequest(apiFetchPath(`/api/v1/submissions?${qs}`), {
     method: "GET",
   });
 }
 
 export async function getSubmission(id: string): Promise<Submission> {
-  return jsonRequest(`${API_BASE_URL}/api/v1/submissions/${id}`, {
+  return jsonRequest(apiFetchPath(`/api/v1/submissions/${id}`), {
     method: "GET",
   });
 }
@@ -207,7 +183,7 @@ export async function updateSubmission(
   id: string,
   payload: UpdateSubmissionPayload
 ): Promise<Submission> {
-  return jsonRequest(`${API_BASE_URL}/api/v1/submissions/${id}`, {
+  return jsonRequest(apiFetchPath(`/api/v1/submissions/${id}`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -215,7 +191,7 @@ export async function updateSubmission(
 }
 
 export async function deleteSubmission(id: string): Promise<void> {
-  return jsonRequest(`${API_BASE_URL}/api/v1/submissions/${id}`, {
+  return jsonRequest(apiFetchPath(`/api/v1/submissions/${id}`), {
     method: "DELETE",
   });
 }
@@ -223,7 +199,7 @@ export async function deleteSubmission(id: string): Promise<void> {
 export async function generateChecklist(
   payload: GenerateChecklistPayload
 ): Promise<GenerateChecklistResponse> {
-  return jsonRequest(`${API_BASE_URL}/api/v1/submissions/checklist/generate`, {
+  return jsonRequest(apiFetchPath("/api/v1/submissions/checklist/generate"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -234,7 +210,7 @@ export async function getSubmissionChecklists(
   submissionId: string
 ): Promise<ChecklistItem[]> {
   return jsonRequest(
-    `${API_BASE_URL}/api/v1/submissions/${submissionId}/checklist`,
+    apiFetchPath(`/api/v1/submissions/${submissionId}/checklist`),
     { method: "GET" }
   );
 }
@@ -243,7 +219,7 @@ export async function checkChecklist(
   payload: ChecklistCheckPayload
 ): Promise<ChecklistCheckResponse> {
   return jsonRequest(
-    `${API_BASE_URL}/api/v1/submissions/checklist/check`,
+    apiFetchPath("/api/v1/submissions/checklist/check"),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -262,7 +238,7 @@ export async function analyzeImpact(params: {
     qs.set("affected_modules", params.affectedModules);
   }
   return jsonRequest(
-    `${API_BASE_URL}/api/v1/submissions/checklist/impact?${qs}`,
+    apiFetchPath(`/api/v1/submissions/checklist/impact?${qs}`),
     { method: "POST" }
   );
 }

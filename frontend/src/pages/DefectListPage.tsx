@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
+  Alert,
   Button,
   Card,
   Empty,
@@ -31,6 +32,7 @@ import {
   deleteDefect,
   updateDefect,
   createDefect,
+  createDefectFromExecution,
   type Defect,
   type DefectStatus,
   type DefectSeverity,
@@ -101,6 +103,9 @@ export function DefectListPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createForm] = Form.useForm<CreateDefectPayload>();
+  const [fromExecModalOpen, setFromExecModalOpen] = useState(false);
+  const [fromExecForm] = Form.useForm();
+  const [fromExecSubmitting, setFromExecSubmitting] = useState(false);
 
   const PAGE_SIZE = 20;
 
@@ -167,6 +172,29 @@ export function DefectListPage() {
     }
   };
 
+  const handleCreateFromExecution = async (values: Record<string, unknown>) => {
+    setFromExecSubmitting(true);
+    try {
+      const executionId = values.executionId as string;
+      const additionalInfo: Partial<CreateDefectPayload> = {
+        title: values.title as string,
+        description: values.description as string,
+        severity: values.severity as CreateDefectPayload["severity"],
+        priority: values.priority as CreateDefectPayload["priority"],
+        creator: values.creator as string,
+      };
+      await createDefectFromExecution({ executionId, ...additionalInfo });
+      message.success("缺陷已从执行记录创建");
+      setFromExecModalOpen(false);
+      fromExecForm.resetFields();
+      void handleRefresh();
+    } catch {
+      message.error("从执行记录创建缺陷失败");
+    } finally {
+      setFromExecSubmitting(false);
+    }
+  };
+
   const handleRefresh = () => {
     setRefreshKey((k) => k + 1);
     if (selectedDefect) setSelectedDefect(null);
@@ -190,6 +218,9 @@ export function DefectListPage() {
           <Tooltip title="刷新">
             <Button icon={<ReloadOutlined />} onClick={() => void handleRefresh()} />
           </Tooltip>
+          <Button icon={<BugOutlined />} onClick={() => setFromExecModalOpen(true)}>
+            从执行创建
+          </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
             新建缺陷
           </Button>
@@ -552,6 +583,90 @@ export function DefectListPage() {
                 取消
               </Button>
               <Button type="primary" htmlType="submit" loading={createSubmitting}>
+                创建缺陷
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 从执行记录创建缺陷弹窗 */}
+      <Modal
+        open={fromExecModalOpen}
+        title={
+          <Space>
+            <BugOutlined style={{ color: "var(--color-danger)" }} />
+            <span>从执行记录创建缺陷</span>
+          </Space>
+        }
+        onCancel={() => {
+          setFromExecModalOpen(false);
+          fromExecForm.resetFields();
+        }}
+        footer={null}
+        width={560}
+        destroyOnClose
+      >
+        <Alert
+          type="info"
+          message="从执行失败的用例快速创建缺陷"
+          description="选择关联的执行记录 ID，系统将自动获取相关信息并预填到缺陷表单中。"
+          style={{ marginBottom: 16 }}
+        />
+        <Form
+          form={fromExecForm}
+          layout="vertical"
+          onFinish={handleCreateFromExecution}
+          initialValues={{ severity: "medium", priority: "medium" }}
+        >
+          <Form.Item
+            name="executionId"
+            label="执行记录 ID"
+            rules={[{ required: true, message: "请输入执行记录 ID" }]}
+          >
+            <Input placeholder="请输入回归执行记录的 recommendationId" />
+          </Form.Item>
+
+          <Form.Item
+            name="title"
+            label="缺陷标题"
+            rules={[{ required: true, message: "请输入缺陷标题" }]}
+          >
+            <Input placeholder="请输入缺陷标题" />
+          </Form.Item>
+
+          <Form.Item name="description" label="缺陷描述">
+            <Input.TextArea rows={3} placeholder="可选，补充缺陷描述或复现步骤" />
+          </Form.Item>
+
+          <Space style={{ width: "100%" }} size="middle">
+            <Form.Item name="severity" label="严重程度" rules={[{ required: true }]} style={{ width: 160 }}>
+              <Select>
+                <Select.Option value="critical"><Tag color="red">致命</Tag></Select.Option>
+                <Select.Option value="high"><Tag color="orange">高</Tag></Select.Option>
+                <Select.Option value="medium"><Tag color="gold">中</Tag></Select.Option>
+                <Select.Option value="low"><Tag color="blue">低</Tag></Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item name="priority" label="优先级" style={{ width: 160 }}>
+              <Select>
+                <Select.Option value="high"><Tag color="red">高</Tag></Select.Option>
+                <Select.Option value="medium"><Tag color="gold">中</Tag></Select.Option>
+                <Select.Option value="low"><Tag color="blue">低</Tag></Select.Option>
+              </Select>
+            </Form.Item>
+          </Space>
+
+          <Form.Item name="creator" label="创建人">
+            <Input placeholder="请输入创建人姓名" />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, marginTop: 8 }}>
+            <Space style={{ width: "100%", justifyContent: "flex-end" }}>
+              <Button onClick={() => { setFromExecModalOpen(false); fromExecForm.resetFields(); }}>
+                取消
+              </Button>
+              <Button type="primary" htmlType="submit" loading={fromExecSubmitting}>
                 创建缺陷
               </Button>
             </Space>
