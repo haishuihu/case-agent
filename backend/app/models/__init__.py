@@ -12,6 +12,7 @@ from app.models.impact import (
     ImpactedModule,
     RegressionRecommendation,
 )
+from app.models.llm_config import EmbeddingConfig, LLMConfig
 from app.models.quick_generate import QuickGenerateRecord
 from app.models.regression_execution import RegressionExecution, ExecutionStatus
 from app.models.submission import (
@@ -23,6 +24,7 @@ __all__ = [
     "AppendGenerateRecord",
     "CaseReview",
     "Defect",
+    "EmbeddingConfig",
     "ExecutionStatus",
     "GenerationAttachment",
     "GenerationRecord",
@@ -30,6 +32,7 @@ __all__ = [
     "ImpactedModule",
     "KnowledgeChunk",
     "KnowledgeDocument",
+    "LLMConfig",
     "QuickGenerateRecord",
     "RegressionExecution",
     "RegressionRecommendation",

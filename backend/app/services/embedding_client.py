@@ -14,22 +14,55 @@ _openai_client: Optional[OpenAI] = None
 _openai_disabled: bool = False
 
 
-def _uses_dashscope_multimodal(settings) -> bool:
+def _get_db_embedding_config():
+    """从数据库查询 active embedding 配置，失败则返回 None。"""
+    try:
+        from app.core.config import get_settings
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+
+        settings = get_settings()
+        db_url = settings.database_url
+        connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
+        engine = create_engine(db_url, future=True, pool_pre_ping=True, connect_args=connect_args)
+        Session = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+        db = Session()
+        try:
+            from app.models.llm_config import EmbeddingConfig
+            cfg = db.query(EmbeddingConfig).filter(EmbeddingConfig.is_active == True).first()  # noqa: E712
+            if cfg:
+                return cfg
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning("[embedding] DB lookup failed: %s", e)
+    return None
+
+
+def _uses_dashscope_multimodal(model_name: str) -> bool:
     """百炼 qwen3-vl-embedding 等走原生多模态接口，不可用 OpenAI /v1/embeddings。"""
-    name = settings.embedding_model.lower()
-    return "vl-embedding" in name
+    return "vl-embedding" in model_name.lower()
 
 
-def _get_openai_client() -> Optional[OpenAI]:
+def _get_openai_client_from_config(cfg=None, settings=None):
+    """从配置对象初始化 OpenAI client。"""
     global _openai_client, _openai_disabled
     if _openai_disabled:
         return None
     if _openai_client is not None:
         return _openai_client
 
-    settings = get_settings()
-    api_key = settings.embedding_api_key
-    base_url = settings.embedding_base_url
+    if cfg:
+        api_key = cfg.api_key
+        base_url = cfg.base_url
+        model_name = cfg.model_name
+        dimensions = cfg.dimensions
+    else:
+        settings = settings or get_settings()
+        api_key = settings.embedding_api_key
+        base_url = settings.embedding_base_url
+        model_name = settings.embedding_model
+        dimensions = settings.embedding_dimensions
 
     if not api_key:
         logger.info("[embedding] No embedding API key configured — embedding disabled")
@@ -40,39 +73,62 @@ def _get_openai_client() -> Optional[OpenAI]:
     logger.info(
         "[embedding] OpenAI-compatible client initialized base_url=%s model=%s",
         base_url or "(default)",
-        settings.embedding_model,
+        model_name,
     )
     return _openai_client
 
 
-def is_embedding_available() -> bool:
+def _get_embedding_config_values():
+    """获取当前有效配置的值，优先从 DB 取，回退到 env。"""
+    db_cfg = _get_db_embedding_config()
+    if db_cfg:
+        return {
+            "api_key": db_cfg.api_key,
+            "base_url": db_cfg.base_url,
+            "model_name": db_cfg.model_name,
+            "dimensions": db_cfg.dimensions,
+            "from_db": True,
+        }
+
     settings = get_settings()
-    if not settings.embedding_api_key.strip():
+    return {
+        "api_key": settings.embedding_api_key,
+        "base_url": settings.embedding_base_url,
+        "model_name": settings.embedding_model,
+        "dimensions": settings.embedding_dimensions,
+        "from_db": False,
+    }
+
+
+def is_embedding_available() -> bool:
+    cfg = _get_embedding_config_values()
+    if not cfg["api_key"].strip():
         return False
-    if _uses_dashscope_multimodal(settings):
+    if _uses_dashscope_multimodal(cfg["model_name"]):
         return True
-    return _get_openai_client() is not None
+    return _get_openai_client_from_config() is not None
 
 
-def _generate_dashscope_multimodal(texts: list[str]) -> list[list[float]]:
+def _generate_dashscope_multimodal(texts: list[str], model_name: str, api_key: str, dimensions: int) -> list[list[float]]:
+    from app.core.config import get_settings
+
     settings = get_settings()
     url = settings.embedding_dashscope_multimodal_url
     headers = {
-        "Authorization": f"Bearer {settings.embedding_api_key}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
     results: list[list[float]] = []
-    # 百炼单次 contents 上限 20
     batch_size = 20
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
         payload: dict[str, object] = {
-            "model": settings.embedding_model,
+            "model": model_name,
             "input": {"contents": [{"text": t} for t in batch]},
         }
-        if settings.embedding_dimensions > 0:
-            payload["parameters"] = {"dimension": settings.embedding_dimensions}
+        if dimensions > 0:
+            payload["parameters"] = {"dimension": dimensions}
 
         with httpx.Client(timeout=120.0) as client:
             response = client.post(url, headers=headers, json=payload)
@@ -96,7 +152,7 @@ def _generate_dashscope_multimodal(texts: list[str]) -> list[list[float]]:
 
     logger.info(
         "[embedding] dashscope multimodal ok model=%s count=%d dim=%d",
-        settings.embedding_model,
+        model_name,
         len(results),
         len(results[0]) if results else 0,
     )
@@ -107,14 +163,14 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
 
-    settings = get_settings()
-    if not settings.embedding_api_key.strip():
+    cfg = _get_embedding_config_values()
+    if not cfg["api_key"].strip():
         raise RuntimeError("Embedding API 未配置，无法生成向量。")
 
-    if _uses_dashscope_multimodal(settings):
-        return _generate_dashscope_multimodal(texts)
+    if _uses_dashscope_multimodal(cfg["model_name"]):
+        return _generate_dashscope_multimodal(texts, cfg["model_name"], cfg["api_key"], cfg["dimensions"])
 
-    client = _get_openai_client()
+    client = _get_openai_client_from_config()
     if client is None:
         raise RuntimeError("Embedding API 未配置，无法生成向量。")
 
@@ -123,11 +179,11 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
         kwargs: dict[str, object] = {
-            "model": settings.embedding_model,
+            "model": cfg["model_name"],
             "input": batch,
         }
-        if settings.embedding_dimensions > 0:
-            kwargs["dimensions"] = settings.embedding_dimensions
+        if cfg["dimensions"] > 0:
+            kwargs["dimensions"] = cfg["dimensions"]
         response = client.embeddings.create(**kwargs)
         for item in sorted(response.data, key=lambda x: x.index):
             results.append(item.embedding)

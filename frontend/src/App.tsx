@@ -1,14 +1,15 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { GenerationTaskProvider } from "./context/GenerationTaskContext";
-import { GeneratorPage } from "./pages/GeneratorPage";
-import { KnowledgeListPage } from "./pages/KnowledgeListPage";
-import { KnowledgeDetailPage } from "./pages/KnowledgeDetailPage";
-import { QuickGeneratePage } from "./pages/QuickGeneratePage";
-import { SubmissionPage } from "./pages/SubmissionPage";
-import { SubmissionDetailPage } from "./pages/SubmissionDetailPage";
-import { ReviewListPage } from "./pages/ReviewListPage";
+import { ConfigPage } from "./pages/ConfigPage";
 import { DefectListPage } from "./pages/DefectListPage";
+import { GeneratorPage } from "./pages/GeneratorPage";
+import { KnowledgeDetailPage } from "./pages/KnowledgeDetailPage";
+import { KnowledgeListPage } from "./pages/KnowledgeListPage";
+import { QuickGeneratePage } from "./pages/QuickGeneratePage";
+import { ReviewListPage } from "./pages/ReviewListPage";
+import { SubmissionDetailPage } from "./pages/SubmissionDetailPage";
+import { SubmissionPage } from "./pages/SubmissionPage";
 import { ToolsPage } from "./pages/ToolsPage";
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
             <Route path="submissions/:id" element={<SubmissionDetailPage />} />
             <Route path="reviews" element={<ReviewListPage />} />
             <Route path="defects" element={<DefectListPage />} />
+            <Route path="settings" element={<ConfigPage />} />
           </Route>
         </Routes>
       </GenerationTaskProvider>
