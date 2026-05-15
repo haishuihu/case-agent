@@ -315,10 +315,10 @@ export function KnowledgeDetailPage() {
                   style={{
                     marginTop: 16,
                     padding: "12px 16px",
-                    background: "rgba(0, 113, 227, 0.04)",
+                    background: "rgba(0, 0, 0, 0.06)",
                     borderRadius: 8,
                     fontSize: 13,
-                    borderLeft: "3px solid rgba(0, 113, 227, 0.2)",
+                    borderLeft: "3px solid rgba(0, 0, 0, 0.06)",
                   }}
                 >
                   {doc.summary}

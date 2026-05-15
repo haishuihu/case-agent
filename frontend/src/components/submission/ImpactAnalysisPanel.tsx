@@ -216,7 +216,7 @@ export function ImpactAnalysisPanel({
           type="info"
           showIcon={false}
           message={impactAnalysis.summary}
-          style={{ marginTop: 16, background: "rgba(0, 113, 227, 0.05)", borderColor: "rgba(0, 113, 227, 0.2)" }}
+          style={{ marginTop: 16, background: "rgba(0, 0, 0, 0.06)", borderColor: "rgba(0, 0, 0, 0.06)" }}
         />
       )}
 
