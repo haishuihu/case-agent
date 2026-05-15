@@ -13,10 +13,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       locale={zhCN}
       theme={{
         token: {
-          colorPrimary: "#1a56db",
+          colorPrimary: "#1A1A1A",
           borderRadius: 6,
           fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif',
+            '"Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
+          colorBorder: "#E5E7EB",
+          colorBgContainer: "#FFFFFF",
+          colorBgLayout: "#F8F9FA",
+          colorText: "#111827",
+          colorTextSecondary: "#6B7280",
         },
         algorithm: theme.defaultAlgorithm,
       }}
