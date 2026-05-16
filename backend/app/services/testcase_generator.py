@@ -88,7 +88,6 @@ def _call_with_timeout(fn: Callable[[], _T], timeout_seconds: float) -> _T:
 
 
 from app.prompts.testcase_prompt import (
-    SYSTEM_PROMPT,
     KnowledgeContextItem,
     build_batch_generation_prompt,
     build_high_coverage_markdown_prompt,
@@ -100,6 +99,7 @@ from app.prompts.testcase_prompt import (
     build_review_prompt,
     build_smoke_test_prompt,
 )
+from app.prompts.manager import get_prompt_manager
 from app.schemas.testcase import GenerationMetadata, ReviewQuestion, TestCaseItem
 from app.services.file_parser import DocumentContext, ImageContext
 from app.services.testcase_deduper import dedupe_and_renumber
@@ -131,6 +131,8 @@ class TestCaseGenerator:
         self.llm_client = llm_client
         self.settings = llm_client.settings
         self.db_session = db_session
+        self.model_provider = llm_client.profile.provider if llm_client.profile else None
+        self._prompt_manager = get_prompt_manager()
 
     def _check_cancel(self, cancel_check: CancelCheck) -> None:
         if cancel_check and cancel_check():
@@ -304,9 +306,16 @@ class TestCaseGenerator:
         t0 = time.monotonic()
         logger.info("[phase1-review] start  max_tokens=%d", planning_max)
 
+        # Use PromptManager for system prompt + CoT user prompt
+        sys_prompt, cot_user_prompt = self._prompt_manager.render(
+            "phase1_requirement_review",
+            {"requirement_context": prompt},
+            model_provider=self.model_provider,
+        )
+
         response = self.llm_client.create_chat_completion(
-            system_prompt=SYSTEM_PROMPT,
-            user_content=prompt,
+            system_prompt=sys_prompt,
+            user_content=cot_user_prompt,
             max_tokens=planning_max,
             response_format={"type": "json_object"},
         )
@@ -366,10 +375,17 @@ class TestCaseGenerator:
         t0 = time.monotonic()
         logger.info("[phase3-smoke] start  max_tokens=%d", smoke_max)
 
+        # Use PromptManager for system prompt + CoT user prompt
+        sys_prompt, cot_user_prompt = self._prompt_manager.render(
+            "phase3_smoke",
+            {"requirement_context": prompt},
+            model_provider=self.model_provider,
+        )
+
         def _do_smoke() -> object:
             return self.llm_client.create_chat_completion(
-                system_prompt=SYSTEM_PROMPT,
-                user_content=prompt,
+                system_prompt=sys_prompt,
+                user_content=cot_user_prompt,
                 max_tokens=smoke_max,
                 response_format={"type": "json_object"},
             )
@@ -449,10 +465,21 @@ class TestCaseGenerator:
         t0 = time.monotonic()
         logger.info("[phase4-detail] module=%s(%s)  max_tokens=%d  start", module.id, module.name, batch_max)
 
+        # Use PromptManager for system prompt + CoT user prompt
+        sys_prompt, cot_user_prompt = self._prompt_manager.render(
+            "phase4_module_detail",
+            {
+                "requirement_context": prompt,
+                "module_name": module.name,
+                "module_id": module.id,
+            },
+            model_provider=self.model_provider,
+        )
+
         def _do_phase4() -> object:
             return self.llm_client.create_chat_completion(
-                system_prompt=SYSTEM_PROMPT,
-                user_content=prompt,
+                system_prompt=sys_prompt,
+                user_content=cot_user_prompt,
                 max_tokens=batch_max,
                 response_format={"type": "json_object"},
             )
@@ -510,9 +537,20 @@ class TestCaseGenerator:
             t1 = time.monotonic()
             logger.info("[phase4-fallback] module=%s  markdown fallback start", module.id)
 
+            # Use PromptManager for system prompt
+            sys_prompt, _ = self._prompt_manager.render(
+                "phase4_module_detail",
+                {
+                    "requirement_context": md_prompt,
+                    "module_name": module.name,
+                    "module_id": module.id,
+                },
+                model_provider=self.model_provider,
+            )
+
             def _do_fallback() -> object:
                 return self.llm_client.create_chat_completion(
-                    system_prompt=SYSTEM_PROMPT,
+                    system_prompt=sys_prompt,
                     user_content=md_prompt,
                     max_tokens=batch_max,
                 )
@@ -604,10 +642,17 @@ class TestCaseGenerator:
         t0 = time.monotonic()
         logger.info("[phase5-review] start  existing_cases=%d  max_tokens=%d", len(existing_cases), review_max)
 
+        # Use PromptManager for system prompt + CoT user prompt
+        sys_prompt, cot_user_prompt = self._prompt_manager.render(
+            "phase5_review",
+            {"requirement_context": prompt},
+            model_provider=self.model_provider,
+        )
+
         def _do_review() -> object:
             return self.llm_client.create_chat_completion(
-                system_prompt=SYSTEM_PROMPT,
-                user_content=prompt,
+                system_prompt=sys_prompt,
+                user_content=cot_user_prompt,
                 max_tokens=review_max,
                 response_format={"type": "json_object"},
             )
@@ -688,10 +733,17 @@ class TestCaseGenerator:
         t0 = time.monotonic()
         logger.info("[phase2-batch] start  modules=%d  max_tokens=%d", len(review.modules), batch_max)
 
+        # Use PromptManager for system prompt + CoT user prompt
+        sys_prompt, cot_user_prompt = self._prompt_manager.render(
+            "phase2_batch_generation",
+            {"requirement_context": prompt},
+            model_provider=self.model_provider,
+        )
+
         def _do_batch() -> object:
             return self.llm_client.create_chat_completion(
-                system_prompt=SYSTEM_PROMPT,
-                user_content=prompt,
+                system_prompt=sys_prompt,
+                user_content=cot_user_prompt,
                 max_tokens=batch_max,
                 response_format={"type": "json_object"},
             )
