@@ -5,6 +5,7 @@ import {
   Card,
   Collapse,
   Input,
+  Modal,
   Select,
   Space,
   Table,
@@ -31,6 +32,7 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
   FireOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 
 import {
@@ -479,6 +481,60 @@ export function ResultPreview({
     </div>
   );
 
+  // ── Convert to UI Automation ──────────────────────────────
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertSuiteId, setConvertSuiteId] = useState<string>("");
+  const [convertSuites, setConvertSuites] = useState<{ id: string; name: string }[]>([]);
+  const [convertEnvs, setConvertEnvs] = useState<{ id: string; name: string; baseUrl: string }[]>([]);
+  const [convertEnvId, setConvertEnvId] = useState<string>("");
+  const [convertBaseUrl, setConvertBaseUrl] = useState<string>("");
+  const [convertLoading, setConvertLoading] = useState(false);
+  const [convertMsg, convertMsgCtx] = message.useMessage();
+
+  const handleConvertToUI = async () => {
+    setConvertLoading(true);
+    try {
+      const { listSuites, listEnvironments } = await import("../services/autoTest");
+      const [suites, envs] = await Promise.all([listSuites(), listEnvironments()]);
+      if (suites.length === 0) {
+        convertMsg.warning("请先在自动化测试模块中创建测试套件");
+        return;
+      }
+      setConvertSuites(suites.map((s) => ({ id: s.id, name: s.name })));
+      setConvertSuiteId(suites[0].id);
+      setConvertEnvs(envs.map((e) => ({ id: e.id, name: e.name, baseUrl: e.baseUrl || "" })));
+      if (envs.length > 0) {
+        setConvertEnvId(envs[0].id);
+        setConvertBaseUrl(envs[0].baseUrl || "");
+      }
+      setConvertOpen(true);
+    } catch (e: unknown) {
+      convertMsg.error("加载套件列表失败: " + (e as Error).message);
+    } finally {
+      setConvertLoading(false);
+    }
+  };
+
+  const doConvert = async () => {
+    if (!result || !convertSuiteId) return;
+    setConvertLoading(true);
+    try {
+      const { convertCasesFromGeneration } = await import("../services/autoTest");
+      const created = await convertCasesFromGeneration(
+        result.generationId,
+        convertSuiteId,
+        undefined,
+        convertBaseUrl || undefined,
+      );
+      convertMsg.success(`已转换 ${created.length} 个用例到 UI 自动化套件`);
+      setConvertOpen(false);
+    } catch (e: unknown) {
+      convertMsg.error("转换失败: " + (e as Error).message);
+    } finally {
+      setConvertLoading(false);
+    }
+  };
+
   // ── Export Bar ────────────────────────────────────────────
   const exportBar = result && (
     <div className="export-bar">
@@ -506,7 +562,78 @@ export function ResultPreview({
       >
         Excel
       </Button>
+      <div className="export-bar-divider" />
+      <Button
+        size="small"
+        type="primary"
+        icon={<ThunderboltOutlined />}
+        onClick={handleConvertToUI}
+        loading={convertLoading}
+      >
+        AI 转 UI 自动化
+      </Button>
     </div>
+  );
+
+  // ── Convert Modal ──────────────────────────────────────────
+  const convertModal = (
+    <Modal
+      title="转换为 UI 自动化用例"
+      open={convertOpen}
+      onOk={doConvert}
+      onCancel={() => setConvertOpen(false)}
+      confirmLoading={convertLoading}
+      okText="开始转换"
+      cancelText="取消"
+      width={520}
+    >
+      {convertMsgCtx}
+      <div style={{ marginBottom: 16 }}>
+        <Typography.Text>
+          将当前生成的 <Tag color="blue">{result?.metadata.caseCount ?? 0}</Tag> 条自然语言测试用例，
+          通过 AI 转换为结构化的 UI 自动化用例。
+        </Typography.Text>
+      </div>
+      <Space direction="vertical" style={{ width: "100%" }} size="middle">
+        <div>
+          <Typography.Text strong>目标测试套件：</Typography.Text>
+          <Select
+            value={convertSuiteId || undefined}
+            onChange={(v) => setConvertSuiteId(v)}
+            style={{ width: "100%", marginTop: 4 }}
+            placeholder="选择目标测试套件"
+            options={convertSuites.map((s) => ({ label: s.name, value: s.id }))}
+          />
+        </div>
+        <div>
+          <Typography.Text strong>目标测试环境：</Typography.Text>
+          <Select
+            value={convertEnvId || undefined}
+            onChange={(v) => {
+              setConvertEnvId(v);
+              const env = convertEnvs.find((e) => e.id === v);
+              setConvertBaseUrl(env?.baseUrl || "");
+            }}
+            style={{ width: "100%", marginTop: 4 }}
+            placeholder="选择测试环境（可选，用于设置 base URL）"
+            allowClear
+            options={convertEnvs.map((e) => ({ label: `${e.name} (${e.baseUrl})`, value: e.id }))}
+          />
+        </div>
+        <div>
+          <Typography.Text strong>目标站点地址：</Typography.Text>
+          <Input
+            value={convertBaseUrl}
+            onChange={(e) => setConvertBaseUrl(e.target.value)}
+            style={{ marginTop: 4 }}
+            placeholder="例如 https://staging.example.com"
+          />
+          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+            AI 生成的页面路径（如 /login）会拼接此地址构成完整 URL
+          </Typography.Text>
+        </div>
+      </Space>
+    </Modal>
   );
 
   // ── Empty / Loading State ─────────────────────────────────
@@ -553,6 +680,8 @@ export function ResultPreview({
   return (
     <>
       {contextHolder}
+      {convertMsgCtx}
+      {convertModal}
       <Card
         className="workspace-card result-card"
         title={

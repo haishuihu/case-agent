@@ -28,7 +28,7 @@ const STATUS_META: Record<
   self_test: {
     label: "自测中",
     color: "processing",
-    icon: <ExclamationCircleFilled style={{ color: "#0071e3" }} />,
+    icon: <ExclamationCircleFilled style={{ color: "var(--color-primary)" }} />,
   },
   self_test_passed: {
     label: "自测通过",
@@ -38,7 +38,7 @@ const STATUS_META: Record<
   gate_passed: {
     label: "门禁通过",
     color: "purple",
-    icon: <CheckCircleFilled style={{ color: "#5856d6" }} />,
+    icon: <CheckCircleFilled style={{ color: "var(--color-primary)" }} />,
   },
   gate_rejected: {
     label: "门禁拒绝",

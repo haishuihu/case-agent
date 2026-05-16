@@ -25,7 +25,7 @@ const STATUS_META: Record<string, { label: string; color: string; icon: React.Re
   self_test: {
     label: "自测中",
     color: "processing",
-    icon: <ExclamationCircleFilled style={{ color: "#0071e3" }} />,
+    icon: <ExclamationCircleFilled style={{ color: "var(--color-primary)" }} />,
   },
   self_test_passed: {
     label: "自测通过",
@@ -35,7 +35,7 @@ const STATUS_META: Record<string, { label: string; color: string; icon: React.Re
   gate_passed: {
     label: "门禁通过",
     color: "purple",
-    icon: <CheckCircleFilled style={{ color: "#5856d6" }} />,
+    icon: <CheckCircleFilled style={{ color: "var(--color-primary)" }} />,
   },
   gate_rejected: {
     label: "门禁拒绝",
@@ -135,7 +135,7 @@ export function GateResultPanel({ submission, onStatusChange }: GateResultPanelP
                 type="info"
                 showIcon={false}
                 message={gateResult.summary}
-                style={{ marginTop: 8, background: "rgba(0, 113, 227, 0.05)", borderColor: "rgba(0, 113, 227, 0.2)" }}
+                style={{ marginTop: 8, background: "rgba(0, 0, 0, 0.06)", borderColor: "rgba(0, 0, 0, 0.06)" }}
               />
             </div>
           )}

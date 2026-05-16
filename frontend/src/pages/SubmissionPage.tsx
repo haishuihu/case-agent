@@ -213,7 +213,7 @@ export function SubmissionPage() {
                   style={{
                     background:
                       submission.submissionType === "feature"
-                        ? "rgba(0, 113, 227, 0.1)"
+                        ? "rgba(0, 0, 0, 0.06)"
                         : submission.submissionType === "bugfix"
                           ? "rgba(255, 159, 10, 0.1)"
                           : "rgba(255, 59, 48, 0.1)",
@@ -246,11 +246,11 @@ export function SubmissionPage() {
                           : submission.status === "gate_rejected"
                             ? "rgba(255, 59, 48, 0.1)"
                             : submission.status === "self_test"
-                              ? "rgba(0, 113, 227, 0.1)"
+                              ? "rgba(0, 0, 0, 0.06)"
                               : "var(--bg-inset)",
                     color:
                       submission.status === "gate_passed"
-                        ? "#5856d6"
+                        ? "var(--color-primary)"
                         : submission.status === "self_test_passed"
                           ? "var(--color-success)"
                           : submission.status === "gate_rejected"

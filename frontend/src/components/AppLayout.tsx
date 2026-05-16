@@ -6,12 +6,9 @@ import {
   ToolOutlined,
   LoadingOutlined,
   CheckCircleOutlined,
-  FireOutlined,
-  SendOutlined,
   ThunderboltOutlined,
-  SafetyCertificateOutlined,
-  BugOutlined,
   SettingOutlined,
+  TranslationOutlined,
 } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -20,9 +17,7 @@ import { useGenerationTask } from "../context/GenerationTaskContext";
 const NAV_ITEMS = [
   { key: "/", label: "用例生成", icon: <ExperimentOutlined /> },
   { key: "/quick", label: "快速生成", icon: <ThunderboltOutlined /> },
-  { key: "/submissions", label: "提测申请", icon: <SendOutlined /> },
-  { key: "/reviews", label: "用例评审", icon: <SafetyCertificateOutlined /> },
-  { key: "/defects", label: "缺陷管理", icon: <BugOutlined /> },
+  { key: "/translate", label: "需求翻译", icon: <TranslationOutlined /> },
   { key: "/knowledge", label: "知识库", icon: <BookOutlined /> },
   { key: "/tools", label: "测试工具", icon: <ToolOutlined /> },
 ];
@@ -34,14 +29,10 @@ export function AppLayout() {
   const [showDone, setShowDone] = useState(false);
   const prevIdRef = useRef<string | null>(null);
 
-  const activeKey = location.pathname.startsWith("/submissions")
-    ? "/submissions"
-    : location.pathname.startsWith("/quick")
+  const activeKey = location.pathname.startsWith("/quick")
     ? "/quick"
-    : location.pathname.startsWith("/reviews")
-    ? "/reviews"
-    : location.pathname.startsWith("/defects")
-    ? "/defects"
+    : location.pathname.startsWith("/translate")
+    ? "/translate"
     : location.pathname.startsWith("/knowledge")
     ? "/knowledge"
     : location.pathname.startsWith("/tools")
@@ -71,7 +62,7 @@ export function AppLayout() {
     >
       <span className="header-task-dot" />
       <Typography.Text style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>生成中...</Typography.Text>
-      <LoadingOutlined style={{ fontSize: 14, color: "var(--color-info)" }} />
+      <LoadingOutlined style={{ fontSize: 14, color: "var(--text-secondary)" }} />
     </Space>
   ) : showDone ? (
     <Space
@@ -82,7 +73,6 @@ export function AppLayout() {
     >
       <CheckCircleOutlined style={{ color: "var(--color-success)", fontSize: 14 }} />
       <Typography.Text style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>生成完成</Typography.Text>
-      <FireOutlined style={{ color: "var(--color-warning)", fontSize: 12 }} />
     </Space>
   ) : null;
 
@@ -92,9 +82,6 @@ export function AppLayout() {
         <div className="app-header-inner">
           <div className="app-header-brand">
             <h2>
-              <span className="brand-icon">
-                <ExperimentOutlined />
-              </span>
               智能测试助手
             </h2>
           </div>

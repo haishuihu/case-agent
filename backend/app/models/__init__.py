@@ -1,4 +1,19 @@
 from app.models.append_generate import AppendGenerateRecord
+from app.models.auto_test import (
+    ExecutionStatus as AutoTestExecutionStatus,
+    ResultStatus,
+    TestCase,
+    TestCaseStatus,
+    TestCaseTag,
+    TestCaseType,
+    TestCaseVersion,
+    TestExecution,
+    TestPlan,
+    TestResult,
+    TestSuite,
+    TriggerConfig,
+    TriggerType,
+)
 from app.models.case_review import CaseReview, ReviewComment
 from app.models.defect import Defect
 from app.models.generation import (
@@ -19,9 +34,11 @@ from app.models.submission import (
     Submission,
     SubmissionChecklist,
 )
+from app.models.translation import RequirementTranslation
 
 __all__ = [
     "AppendGenerateRecord",
+    "AutoTestExecutionStatus",
     "CaseReview",
     "Defect",
     "EmbeddingConfig",
@@ -36,7 +53,20 @@ __all__ = [
     "QuickGenerateRecord",
     "RegressionExecution",
     "RegressionRecommendation",
+    "RequirementTranslation",
+    "ResultStatus",
     "ReviewComment",
     "Submission",
     "SubmissionChecklist",
+    "TestCase",
+    "TestCaseStatus",
+    "TestCaseTag",
+    "TestCaseType",
+    "TestCaseVersion",
+    "TestExecution",
+    "TestPlan",
+    "TestResult",
+    "TestSuite",
+    "TriggerConfig",
+    "TriggerType",
 ]

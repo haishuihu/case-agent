@@ -251,6 +251,21 @@ def ensure_case_review_tables(engine: Engine) -> None:
             conn.execute(text("CREATE INDEX idx_comments_review ON review_comments(review_id)"))
 
 
+def ensure_auto_test_soft_delete_columns(engine: Engine) -> None:
+    """Add is_deleted and deleted_at columns to auto test tables."""
+    insp = inspect(engine)
+    tables = ["test_suites", "test_cases", "test_plans", "test_executions"]
+    with engine.begin() as conn:
+        for table in tables:
+            if not insp.has_table(table):
+                continue
+            existing = {c["name"] for c in insp.get_columns(table)}
+            if "is_deleted" not in existing:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT 0"))
+            if "deleted_at" not in existing:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN deleted_at DATETIME"))
+
+
 def ensure_append_generate_table(engine: Engine) -> None:
     """Create append generate records table if it doesn't exist."""
     insp = inspect(engine)
