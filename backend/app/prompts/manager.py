@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -132,7 +133,11 @@ class PromptManager:
         """Build the task description + data context section."""
         ctx_block = tmpl.get("task_context_template")
         if ctx_block:
-            return ctx_block.format(**context)
+            try:
+                return ctx_block.format(**context)
+            except KeyError as e:
+                logger.warning("task_context_template references missing key: %s", e)
+                # fall through to generic rendering
         # Generic fallback: dump formatted context
         lines = ["## 任务上下文"]
         for key in (
@@ -161,8 +166,6 @@ class PromptManager:
                 # Reference to an examples/*.json file
                 ex_path = self.examples_dir / ex
                 if ex_path.exists():
-                    import json
-
                     ex_data = json.loads(ex_path.read_text(encoding="utf-8"))
                     if isinstance(ex_data, list):
                         for item in ex_data[:2]:
@@ -171,6 +174,8 @@ class PromptManager:
                         lines.append(self._format_one_example(ex_data))
             elif isinstance(ex, dict):
                 lines.append(self._format_one_example(ex))
+        if len(examples) > 2:
+            logger.debug("few_shot_examples has %d entries, only using first 2", len(examples))
         return "\n".join(lines) if len(lines) > 2 else ""
 
     @staticmethod
@@ -180,8 +185,6 @@ class PromptManager:
         if inp:
             parts.append("**输入**:")
             parts.append("```json")
-            import json
-
             parts.append(json.dumps(inp, ensure_ascii=False, indent=2))
             parts.append("```")
         out = ex.get("output", {})
@@ -228,7 +231,11 @@ class PromptManager:
         """Build the output format instruction."""
         fmt = tmpl.get("output_format")
         if fmt:
-            return fmt.format(**context)
+            try:
+                return fmt.format(**context)
+            except KeyError as e:
+                logger.warning("output_format references missing key: %s", e)
+                # fall through to generic JSON instruction
 
         # Generic JSON instruction
         schema_ref = tmpl.get("output_schema", "")
