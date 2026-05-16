@@ -1,0 +1,16 @@
+[
+  {
+    "id": "crud-001",
+    "requirement": "管理员可以管理商品分类：查看分类列表（树形结构）、新增分类（名称、父分类、排序号）、编辑分类、删除分类。删除前需确认该分类下无商品，如有商品则提示「该分类下有N个商品，无法删除」。",
+    "module": {"name": "商品分类管理", "id": "M01", "sub_features": ["分类列表", "新增分类", "编辑分类", "删除分类"]},
+    "rules": ["分类名为必填，2-20字", "排序号为正整数", "父分类可选", "有商品的分类不可删除", "删除需二次确认"],
+    "constraints": [
+      {"field": "分类名称", "type": "string", "length": "2-20", "format": "文本", "required": true},
+      {"field": "父分类", "type": "select", "length": "-", "format": "分类树选择", "required": false},
+      {"field": "排序号", "type": "integer", "length": "1-999", "format": "数字", "required": true}
+    ],
+    "must_cover": ["查看分类列表", "新增一级分类", "新增子分类", "分类名称为空", "分类名称超长", "编辑分类", "删除无商品分类", "删除有商品分类提示", "取消删除"],
+    "expected_min_cases": 12,
+    "quality_checks": ["priority_distribution", "no_duplicates", "actionable_steps"]
+  }
+]
