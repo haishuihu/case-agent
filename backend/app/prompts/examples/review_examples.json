@@ -1,0 +1,25 @@
+[
+  {
+    "id": "ex-review-001",
+    "scenario": "需求评审 - 用户登录功能",
+    "tags": ["登录", "评审", "需求分析"],
+    "input": {
+      "requirement": "用户可以使用手机号和验证码登录系统"
+    },
+    "output": {
+      "modules": [
+        {"id":"M01","name":"用户登录","description":"手机号验证码登录功能","sub_features":["手机号输入","验证码发送","验证码校验","登录状态保持"]}
+      ],
+      "questions": [
+        {"id":"Q-001","type":"边界条件缺失","description":"手机号的格式要求是什么？是否支持境外手机号？","module":"M01","suggestion":"建议明确手机号格式和长度限制"},
+        {"id":"Q-002","type":"异常场景遗漏","description":"验证码发送失败时的处理逻辑是什么？","module":"M01","suggestion":"建议补充：发送失败提示 + 重试机制"},
+        {"id":"Q-003","type":"交互逻辑不清","description":"验证码有效期内用户关闭页面后重新打开，是否需要重新获取验证码？","module":"M01","suggestion":"建议明确验证码生命周期管理"}
+      ],
+      "business_rules": ["每个手机号每天最多获取5次验证码", "验证码6位数字，有效期60秒", "同一手机号1分钟内只能获取1次验证码"],
+      "data_constraints": [
+        {"field":"手机号","type":"string","length":"11","format":"数字","required":true},
+        {"field":"验证码","type":"string","length":"6","format":"数字","required":true}
+      ]
+    }
+  }
+]

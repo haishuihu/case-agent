@@ -1,0 +1,36 @@
+[
+  {
+    "id": "ex-smoke-001",
+    "scenario": "用户登录冒烟测试",
+    "tags": ["登录", "冒烟", "P0", "P1"],
+    "input": {
+      "modules": [{"id":"M01","name":"用户登录","description":"手机号验证码登录"}]
+    },
+    "output": {
+      "cases": [
+        {
+          "title": "正确手机号+验证码登录成功",
+          "preconditions": ["已注册手机号", "验证码服务正常"],
+          "steps": ["1.打开登录页", "2.输入手机号", "3.输入验证码", "4.点击登录"],
+          "expected_result": "登录成功，跳转首页",
+          "priority": "P0",
+          "module": "用户登录",
+          "module_id": "M01",
+          "category": "冒烟测试",
+          "confirmation_note": null
+        },
+        {
+          "title": "错误验证码登录失败",
+          "preconditions": ["已注册手机号"],
+          "steps": ["1.输入手机号", "2.输入错误验证码", "3.点击登录"],
+          "expected_result": "提示「验证码错误」",
+          "priority": "P1",
+          "module": "用户登录",
+          "module_id": "M01",
+          "category": "冒烟测试",
+          "confirmation_note": null
+        }
+      ]
+    }
+  }
+]

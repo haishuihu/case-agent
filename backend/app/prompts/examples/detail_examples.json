@@ -1,0 +1,140 @@
+[
+  {
+    "id": "ex-001",
+    "scenario": "表单输入校验 - 手机号注册",
+    "tags": ["表单", "校验", "边界值", "异常处理"],
+    "input": {
+      "module": "用户注册",
+      "sub_features": ["手机号注册"],
+      "rules": ["手机号11位数字", "验证码6位数字60秒有效", "同一手机号每天最多发5次验证码"]
+    },
+    "output": {
+      "cases": [
+        {
+          "title": "输入正确手机号+正确验证码注册成功",
+          "preconditions": ["未注册手机号13800001111", "验证码服务正常"],
+          "steps": ["1.打开注册页面", "2.输入手机号13800001111", "3.点击获取验证码", "4.输入正确验证码", "5.点击注册"],
+          "expected_result": "注册成功，跳转到首页并显示欢迎提示",
+          "priority": "P2",
+          "module": "用户注册",
+          "module_id": "M01",
+          "category": "正常流程",
+          "confirmation_note": null
+        },
+        {
+          "title": "输入已注册手机号提示错误",
+          "preconditions": ["手机号13800001111已被注册"],
+          "steps": ["1.打开注册页面", "2.输入已注册手机号13800001111", "3.点击获取验证码"],
+          "expected_result": "提示「该手机号已注册，请直接登录」，不发送验证码",
+          "priority": "P2",
+          "module": "用户注册",
+          "module_id": "M01",
+          "category": "异常与错误处理",
+          "confirmation_note": null
+        },
+        {
+          "title": "输入10位手机号校验失败",
+          "preconditions": ["打开注册页面"],
+          "steps": ["1.输入10位手机号1380000111", "2.点击获取验证码"],
+          "expected_result": "提示「请输入正确的11位手机号」，不发送请求",
+          "priority": "P2",
+          "module": "用户注册",
+          "module_id": "M01",
+          "category": "边界值与输入校验",
+          "confirmation_note": null
+        },
+        {
+          "title": "输入含字母的手机号校验失败",
+          "preconditions": ["打开注册页面"],
+          "steps": ["1.输入手机号1380000abcd", "2.点击获取验证码"],
+          "expected_result": "提示「请输入正确的11位手机号」",
+          "priority": "P2",
+          "module": "用户注册",
+          "module_id": "M01",
+          "category": "边界值与输入校验",
+          "confirmation_note": null
+        },
+        {
+          "title": "输入错误验证码注册失败",
+          "preconditions": ["已发送验证码到手机13800001111", "验证码123456"],
+          "steps": ["1.输入手机号13800001111", "2.输入错误验证码111111", "3.点击注册"],
+          "expected_result": "提示「验证码错误，请重新输入」，注册失败",
+          "priority": "P2",
+          "module": "用户注册",
+          "module_id": "M01",
+          "category": "异常与错误处理",
+          "confirmation_note": null
+        },
+        {
+          "title": "超过每日验证码发送次数限制",
+          "preconditions": ["手机号13800001111今日已发送5次验证码"],
+          "steps": ["1.输入手机号13800001111", "2.点击获取验证码"],
+          "expected_result": "提示「今日验证码发送次数已达上限，请明日再试」",
+          "priority": "P2",
+          "module": "用户注册",
+          "module_id": "M01",
+          "category": "边界值与输入校验",
+          "confirmation_note": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "ex-002",
+    "scenario": "列表搜索与筛选",
+    "tags": ["列表", "搜索", "筛选", "空状态"],
+    "input": {
+      "module": "订单列表搜索",
+      "sub_features": ["按订单号搜索", "按日期范围筛选", "按状态筛选"],
+      "rules": ["支持精确搜索和模糊搜索", "日期范围不超过90天", "状态包括：待支付/已支付/已发货/已完成/已取消"]
+    },
+    "output": {
+      "cases": [
+        {
+          "title": "按订单号精确搜索",
+          "preconditions": ["系统中存在订单号ORD20240101001"],
+          "steps": ["1.进入订单列表页", "2.在搜索框输入ORD20240101001", "3.点击搜索"],
+          "expected_result": "列表显示订单ORD20240101001，其他订单不显示",
+          "priority": "P2",
+          "module": "订单列表搜索",
+          "module_id": "M02",
+          "category": "正常流程",
+          "confirmation_note": null
+        },
+        {
+          "title": "搜索不存在的订单号显示空状态",
+          "preconditions": ["系统中不存在订单号ORD99999999999"],
+          "steps": ["1.进入订单列表页", "2.搜索ORD99999999999", "3.点击搜索"],
+          "expected_result": "显示空状态提示「未找到相关订单」",
+          "priority": "P2",
+          "module": "订单列表搜索",
+          "module_id": "M02",
+          "category": "用户体验与界面",
+          "confirmation_note": null
+        },
+        {
+          "title": "按状态筛选已支付订单",
+          "preconditions": ["系统中存在已支付和待支付订单"],
+          "steps": ["1.进入订单列表页", "2.选择状态筛选为「已支付」", "3.点击搜索"],
+          "expected_result": "列表只显示状态为「已支付」的订单",
+          "priority": "P2",
+          "module": "订单列表搜索",
+          "module_id": "M02",
+          "category": "正常流程",
+          "confirmation_note": null
+        },
+        {
+          "title": "日期范围超过90天提示错误",
+          "preconditions": ["进入订单列表页"],
+          "steps": ["1.选择起始日期为2024-01-01", "2.选择结束日期为2024-06-01", "3.点击搜索"],
+          "expected_result": "提示「日期范围不能超过90天」",
+          "priority": "P2",
+          "module": "订单列表搜索",
+          "module_id": "M02",
+          "category": "边界值与输入校验",
+          "confirmation_note": null
+        }
+      ]
+    }
+  }
+]
