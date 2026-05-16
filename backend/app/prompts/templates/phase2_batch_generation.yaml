@@ -81,14 +81,14 @@ output_format: |
   ## 输出要求
   基于以上思考，请只输出 JSON：
 
-  {
+  {{
     "smoke_cases": [
-      {"title":"测试标题","preconditions":["前置条件"],"steps":["步骤1","步骤2"],"expected_result":"预期结果","priority":"P0","module":"模块名","module_id":"M01","category":"冒烟测试","confirmation_note":null}
+      {{"title":"测试标题","preconditions":["前置条件"],"steps":["步骤1","步骤2"],"expected_result":"预期结果","priority":"P0","module":"模块名","module_id":"M01","category":"冒烟测试","confirmation_note":null}}
     ],
     "module_cases": [
-      {"title":"测试标题","preconditions":["前置条件"],"steps":["步骤1"],"expected_result":"预期结果","priority":"P2","module":"模块名","module_id":"M01","category":"覆盖维度","confirmation_note":null}
+      {{"title":"测试标题","preconditions":["前置条件"],"steps":["步骤1"],"expected_result":"预期结果","priority":"P2","module":"模块名","module_id":"M01","category":"覆盖维度","confirmation_note":null}}
     ],
     "review_cases": [
-      {"title":"测试标题","preconditions":["前置条件"],"steps":["步骤1"],"expected_result":"预期结果","priority":"P2","module":"模块名","module_id":"M01","category":"评审补充","review_source":"开发工程师视角","confirmation_note":null}
+      {{"title":"测试标题","preconditions":["前置条件"],"steps":["步骤1"],"expected_result":"预期结果","priority":"P2","module":"模块名","module_id":"M01","category":"评审补充","review_source":"开发工程师视角","confirmation_note":null}}
     ]
-  }
+  }}

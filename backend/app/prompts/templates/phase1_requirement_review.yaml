@@ -56,4 +56,4 @@ output_format: |
   ## 输出要求
   基于以上思考，请只输出 JSON：
 
-  {"modules":[{"id":"M01","name":"模块名","description":"功能描述","sub_features":["子功能1","子功能2"]}],"questions":[{"id":"Q-001","type":"边界条件缺失","description":"问题描述","module":"M01","suggestion":"建议"}],"business_rules":["规则1","规则2"],"data_constraints":[{"field":"字段名","type":"string","length":"1-20","format":"手机号","required":true}]}
+  {{"modules":[{{"id":"M01","name":"模块名","description":"功能描述","sub_features":["子功能1","子功能2"]}}],"questions":[{{"id":"Q-001","type":"边界条件缺失","description":"问题描述","module":"M01","suggestion":"建议"}}],"business_rules":["规则1","规则2"],"data_constraints":[{{"field":"字段名","type":"string","length":"1-20","format":"手机号","required":true}}]}}
