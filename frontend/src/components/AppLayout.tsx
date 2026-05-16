@@ -6,12 +6,9 @@ import {
   ToolOutlined,
   LoadingOutlined,
   CheckCircleOutlined,
-  SendOutlined,
   ThunderboltOutlined,
-  SafetyCertificateOutlined,
-  BugOutlined,
   SettingOutlined,
-  RocketOutlined,
+  TranslationOutlined,
 } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -20,11 +17,8 @@ import { useGenerationTask } from "../context/GenerationTaskContext";
 const NAV_ITEMS = [
   { key: "/", label: "用例生成", icon: <ExperimentOutlined /> },
   { key: "/quick", label: "快速生成", icon: <ThunderboltOutlined /> },
-  { key: "/submissions", label: "提测申请", icon: <SendOutlined /> },
-  { key: "/reviews", label: "用例评审", icon: <SafetyCertificateOutlined /> },
-  { key: "/defects", label: "缺陷管理", icon: <BugOutlined /> },
+  { key: "/translate", label: "需求翻译", icon: <TranslationOutlined /> },
   { key: "/knowledge", label: "知识库", icon: <BookOutlined /> },
-  { key: "/auto-test", label: "自动化测试", icon: <RocketOutlined /> },
   { key: "/tools", label: "测试工具", icon: <ToolOutlined /> },
 ];
 
@@ -35,18 +29,12 @@ export function AppLayout() {
   const [showDone, setShowDone] = useState(false);
   const prevIdRef = useRef<string | null>(null);
 
-  const activeKey = location.pathname.startsWith("/submissions")
-    ? "/submissions"
-    : location.pathname.startsWith("/quick")
+  const activeKey = location.pathname.startsWith("/quick")
     ? "/quick"
-    : location.pathname.startsWith("/reviews")
-    ? "/reviews"
-    : location.pathname.startsWith("/defects")
-    ? "/defects"
+    : location.pathname.startsWith("/translate")
+    ? "/translate"
     : location.pathname.startsWith("/knowledge")
     ? "/knowledge"
-    : location.pathname.startsWith("/auto-test")
-    ? "/auto-test"
     : location.pathname.startsWith("/tools")
     ? "/tools"
     : "/";

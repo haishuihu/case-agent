@@ -15,6 +15,7 @@ from app.api.router import api_router
 from app.core.config import get_settings
 from app.db.migrate import (
     ensure_append_generate_table,
+    ensure_auto_test_soft_delete_columns,
     ensure_case_review_tables,
     ensure_defect_table,
     ensure_generation_record_columns,
@@ -61,6 +62,7 @@ def on_startup() -> None:
     ensure_case_review_tables(engine)
     ensure_append_generate_table(engine)
     ensure_defect_table(engine)
+    ensure_auto_test_soft_delete_columns(engine)
 
     # 启动时清理历史遗留的超时僵尸 running 任务
     db = SessionLocal()
