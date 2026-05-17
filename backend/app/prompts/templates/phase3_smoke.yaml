@@ -20,16 +20,6 @@ system_prompt:
 
     minimax: |
       你是一个冒烟测试专家。只覆盖核心路径和关键异常。重要：只输出 JSON。
-
-cot_template:
-  steps:
-    - name: 核心路径识别
-      instruction: "对每个模块，识别用户最常走的核心路径（Happy Path）和最关键的异常路径。不展开边缘场景。"
-    - name: 用例设计
-      instruction: "为每个核心路径和关键异常路径设计一条简洁的冒烟用例。P0 标记为核心功能，P1 标记为主要流程。"
-    - name: 自检
-      instruction: "检查：每个模块是否至少覆盖正常路径 + 最关键的异常路径？是否有多余的边缘场景混入？"
-
 few_shot_examples:
   - smoke_examples.json
 

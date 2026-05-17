@@ -1,0 +1,87 @@
+<h2>设计三：Few-Shot 示例 + 版本评估</h2>
+<p class="subtitle">用精选示例锚定输出质量 · 用评估套件量化 prompt 改进效果</p>
+
+<div class="section">
+  <h3>Few-Shot 示例系统</h3>
+  <p style="font-size: 14px; color: #999; margin-bottom: 16px;">这是解决「生成质量不稳定」最有效的手段。精心挑选 2-3 个高质量示例，让模型「看到」什么是好的输出。</p>
+
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">示例结构 (JSON)</div>
+      <div class="mockup-body" style="font-family: monospace; font-size: 11px; line-height: 1.6; padding: 12px; background: #1a1a2e;">
+<div style="color: #888;">// prompts/examples/detail_examples.json</div>
+<div>[</div>
+<div>  {</div>
+<div>    <span style="color: #5cf;">"id":</span> <span style="color: #ff5;">"ex-001"</span>,</div>
+<div>    <span style="color: #5cf;">"scenario":</span> <span style="color: #ff5;">"表单输入校验"</span>,</div>
+<div>    <span style="color: #5cf;">"tags":</span> [<span style="color: #ff5;">"表单"</span>, <span style="color: #ff5;">"校验"</span>, <span style="color: #ff5;">"边界值"</span>],</div>
+<div>    <span style="color: #5cf;">"input":</span> {</div>
+<div>      <span style="color: #5cf;">"module":</span> <span style="color: #ff5;">"用户注册表单"</span>,</div>
+<div>      <span style="color: #5cf;">"sub_features":</span> [<span style="color: #ff5;">"手机号注册"</span>],</div>
+<div>      <span style="color: #5cf;">"rules":</span> [<span style="color: #ff5;">"手机号11位"</span>]</div>
+<div>    },</div>
+<div>    <span style="color: #5cf;">"output":</span> {</div>
+<div>      <span style="color: #5cf;">"cases":</span> [</div>
+<div>        {</div>
+<div>          <span style="color: #5cf;">"title":</span> <span style="color: #ff5;">"输入正确手机号+验证码注册"</span>,</div>
+<div>          <span style="color: #5cf;">"preconditions":</span> [<span style="color: #ff5;">"未注册手机号"</span>],</div>
+<div>          <span style="color: #5cf;">"steps":</span> [<span style="color: #ff5;">"1.打开注册页"</span>, <span style="color: #ff5;">"2.输入13800001111"</span>],</div>
+<div>          <span style="color: #5cf;">"expected_result":</span> <span style="color: #ff5;">"注册成功，跳转首页"</span>,</div>
+<div>          <span style="color: #5cf;">"priority":</span> <span style="color: #ff5;">"P2"</span>,</div>
+<div>          <span style="color: #5cf;">"category":</span> <span style="color: #ff5;">"正常流程"</span></div>
+<div>        }</div>
+<div>        <span style="color: #888;">// ... more cases</span></div>
+<div>      ]</div>
+<div>    }</div>
+<div>  }</div>
+<div>]</div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">注入策略</div>
+      <div class="mockup-body" style="font-size: 13px; line-height: 1.8; padding: 16px;">
+        <div style="margin-bottom: 12px;"><strong>策略 A: 固定示例</strong></div>
+        <div style="color: #999; margin-bottom: 16px;">选 2 条最通用、最具代表性的示例，每次调用都注入。覆盖最常见场景（正常流程 + 边界值）。</div>
+
+        <div style="margin-bottom: 12px;"><strong>策略 B: 标签匹配</strong></div>
+        <div style="color: #999; margin-bottom: 16px;">根据需求特征（如「表单」「权限」「支付」）从示例库匹配最相关的 2 条示例。后续可扩展为 RAG。</div>
+
+        <div style="margin-bottom: 12px;"><strong>当前阶段：策略 A</strong></div>
+        <div style="color: #5f5;">简单可靠，避免引入额外复杂度。示例库积累到 10+ 条后再切换到策略 B。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>评估套件 (Evaluation Harness)</h3>
+  <p style="font-size: 14px; color: #999; margin-bottom: 12px;">解决「不知道改 prompt 是变好还是变坏」的问题。</p>
+
+  <div class="mockup">
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.8; padding: 16px; background: #1a1a2e;">
+<div style="color: #888;"># prompts/evaluator.py 使用方式</div>
+<div style="color: #5cf;">python -m app.prompts.evaluator</div>
+<div style="color: #5cf;">  --template phase4_module_detail</div>
+<div style="color: #5cf;">  --dataset eval/datasets/login_scenarios.json</div>
+<br>
+<div style="color: #888;"># 评估数据集格式</div>
+<div>[</div>
+<div>  {</div>
+<div>    <span style="color: #5cf;">"id":</span> <span style="color: #ff5;">"eval-001"</span>,</div>
+<div>    <span style="color: #5cf;">"requirement":</span> <span style="color: #ff5;">"用户登录功能..."</span>,</div>
+<div>    <span style="color: #5cf;">"module":</span> { <span style="color: #5cf;">"name":</span> <span style="color: #ff5;">"登录"</span>, <span style="color: #5cf;">"sub_features":</span> [...] },</div>
+<div>    <span style="color: #5cf;">"expected_min_cases":</span> <span style="color: #ff5;">15</span>,</div>
+<div>    <span style="color: #5cf;">"must_cover":</span> [<span style="color: #ff5;">"正常登录"</span>, <span style="color: #ff5;">"密码错误"</span>, <span style="color: #ff5;">"空输入"</span>],</div>
+<div>    <span style="color: #5cf;">"quality_checks":</span> [<span style="color: #ff5;">"priority_distribution"</span>, <span style="color: #ff5;">"no_duplicates"</span>]</div>
+<div>  }</div>
+<div>]</div>
+<br>
+<div style="color: #888;"># 评估指标</div>
+<div>• <strong>覆盖率</strong>: must_cover 场景是否都被覆盖</div>
+<div>• <strong>优先级分布</strong>: P0/P1/P2/P3 比例是否合理</div>
+<div>• <strong>去重率</strong>: 用例间相似度是否低于阈值</div>
+<div>• <strong>可执行性</strong>: 步骤是否具体（≥ 2 步）、预期是否可验证</div>
+<div>• <strong>稳定性</strong>: 同一输入跑 3 次，Jaccard 相似度</div>
+    </div>
+  </div>
+</div>

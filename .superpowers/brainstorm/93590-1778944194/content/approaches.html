@@ -1,0 +1,107 @@
+<h2>三种方案对比</h2>
+<p class="subtitle">多模型兼容 · 聚焦核心生成链路 · 生产级目标</p>
+
+<div class="section">
+  <div class="cards">
+    <div class="card" data-choice="approach-a" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>方案 A：指令精炼 + Few-Shot 增强</h3>
+        <p style="color: #999; font-size: 13px; margin-bottom: 12px;">增量优化，不动架构</p>
+
+        <div class="pros-cons" style="font-size: 13px;">
+          <div class="pros"><h4>做什么</h4>
+            <ul>
+              <li>收窄 SYSTEM_PROMPT 角色定义，降低认知负荷</li>
+              <li>每个 Phase 补充 2-3 个精选 Few-Shot 示例</li>
+              <li>添加输出质量自检清单到 prompt</li>
+              <li>保持现有 .py 文件格式不变</li>
+            </ul>
+          </div>
+          <div class="cons"><h4>代价</h4>
+            <ul>
+              <li>Phase 间仍共享 system prompt，聚焦问题治标不治本</li>
+              <li>无版本追踪，改 prompt 靠 git diff 看</li>
+              <li>Few-Shot 示例硬编码，不同需求用同样的示例</li>
+              <li>长期维护成本高</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="approach-b" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>⭐ 方案 B：模块化 Prompt 系统 + CoT 引导</h3>
+        <p style="color: #999; font-size: 13px; margin-bottom: 12px;">结构化重构，推荐方案</p>
+
+        <div class="pros-cons" style="font-size: 13px;">
+          <div class="pros"><h4>做什么</h4>
+            <ul>
+              <li>每个 Phase 独立 System Prompt，精准聚焦</li>
+              <li>引入 CoT 思维链模板（分析 → 设计 → 生成 → 校验）</li>
+              <li>Prompt 模板化（YAML/Markdown），与代码解耦</li>
+              <li>Prompt 版本管理器 + 评估套件</li>
+              <li>多模型适配层（不同模型不同的 prompt 格式）</li>
+            </ul>
+          </div>
+          <div class="cons"><h4>代价</h4>
+            <ul>
+              <li>需重构生成管线（~3-5 天）</li>
+              <li>需建立评估数据集和指标</li>
+              <li>模板系统引入少量抽象层</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-choice="approach-c" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>方案 C：全链路 Prompt 平台</h3>
+        <p style="color: #999; font-size: 13px; margin-bottom: 12px;">企业级基础设施</p>
+
+        <div class="pros-cons" style="font-size: 13px;">
+          <div class="pros"><h4>做什么</h4>
+            <ul>
+              <li>Prompt CMS（数据库存储 + UI 编辑器）</li>
+              <li>A/B 测试框架 + 自动化评估 pipeline</li>
+              <li>动态 Few-Shot 检索（RAG for examples）</li>
+              <li>输出护栏层（schema validation, auto-fix）</li>
+            </ul>
+          </div>
+          <div class="cons"><h4>代价</h4>
+            <ul>
+              <li>过度工程化，当前阶段 ROI 低</li>
+              <li>前端+后端大量开发（~2-3 周）</li>
+              <li>维护成本高，团队规模不匹配</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>方案 B 的核心设计</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.8; padding: 16px;">
+      <div><strong>prompts/</strong> 目录重构</div>
+      <div style="margin-top: 8px; border-left: 2px solid #55f; padding-left: 12px;">
+        <div>├── templates/          ← YAML 模板文件（人类可读可编辑）</div>
+        <div>│   ├── phase1_requirement_review.yaml</div>
+        <div>│   ├── phase2_batch_generation.yaml</div>
+        <div>│   ├── phase3_smoke.yaml</div>
+        <div>│   ├── phase4_module_detail.yaml</div>
+        <div>│   └── phase5_review.yaml</div>
+        <div>├── examples/           ← Few-Shot 精选示例库</div>
+        <div>│   ├── smoke_examples.json</div>
+        <div>│   └── detail_examples.json</div>
+        <div>├── schemas/            ← 输出 JSON Schema</div>
+        <div>├── manager.py          ← PromptManager（加载、版本、渲染）</div>
+        <div>└── evaluator.py        ← 评估套件（evaluation harness）</div>
+      </div>
+      <div style="margin-top: 12px; color: #999;">保持向后兼容，现有 build_xxx_prompt() 函数保留为 adapter 层</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,75 @@
+<h2>设计四：多模型适配 + 整体架构总览</h2>
+<p class="subtitle">一份 prompt 模板，自动适配不同模型的差异</p>
+
+<div class="section">
+  <h3>模型差异适配</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.7; padding: 16px; background: #1a1a2e;">
+<div style="color: #888;"># prompts/templates/phase4_module_detail.yaml</div>
+<div style="color: #5cf;">system_prompt:</div>
+<div>  default: |</div>
+<div>    你是一个资深测试设计专家...</div>
+<div>  </div>
+<div>  <span style="color: #5cf;">overrides:</span></div>
+<div>    <span style="color: #ff5;">deepseek:</span> |</div>
+<div>      # DeepSeek 对角色扮演更敏感，加强角色指令</div>
+<div>      你现在必须扮演一个资深测试设计专家...</div>
+<div>    <span style="color: #ff5;">minimax:</span> |</div>
+<div>      # MiniMax 对输出格式指令需更明确</div>
+<div>      你是一个资深测试设计专家。重要：你必须只输出 JSON...</div>
+</div>
+  </div>
+
+  <div style="display: flex; gap: 16px; margin-top: 16px;">
+    <div style="flex: 1; background: #0a0a1a; border-radius: 8px; padding: 16px;">
+      <h4 style="margin-top: 0;">适配点 1: System Prompt 格式</h4>
+      <p style="font-size: 13px; color: #aaa;">DeepSeek 对角色扮演指令更敏感，MiniMax/OpenAI 对格式约束需更明确。每个模型可有自己的 system prompt override。</p>
+    </div>
+    <div style="flex: 1; background: #0a0a1a; border-radius: 8px; padding: 16px;">
+      <h4 style="margin-top: 0;">适配点 2: JSON 输出策略</h4>
+      <p style="font-size: 13px; color: #aaa;">支持 structured output 的模型用 response_format；不支持的模型在 prompt 中强化 JSON 格式指令。</p>
+    </div>
+    <div style="flex: 1; background: #0a0a1a; border-radius: 8px; padding: 16px;">
+      <h4 style="margin-top: 0;">适配点 3: Token 预算</h4>
+      <p style="font-size: 13px; color: #aaa;">根据模型 context window 自动裁剪 few-shot 示例数量和知识上下文长度。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>整体架构总览</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.8; padding: 16px; background: #1a1a2e;">
+<div style="color: #888;">backend/app/prompts/</div>
+<div>├── templates/              ← YAML 模板（人类可编辑）</div>
+<div>│   ├── phase1_requirement_review.yaml</div>
+<div>│   ├── phase2_batch_generation.yaml</div>
+<div>│   ├── phase3_smoke.yaml</div>
+<div>│   ├── phase4_module_detail.yaml</div>
+<div>│   └── phase5_review.yaml</div>
+<div>├── examples/               ← Few-Shot 示例库</div>
+<div>│   ├── review_examples.json</div>
+<div>│   ├── smoke_examples.json</div>
+<div>│   └── detail_examples.json</div>
+<div>├── schemas/                ← 输出 JSON Schema</div>
+<div>│   ├── phase1_output.schema.json</div>
+<div>│   ├── phase4_output.schema.json</div>
+<div>│   └── ...</div>
+<div>├── manager.py              ← PromptManager: 加载、渲染、版本查询</div>
+<div>└── evaluator.py            ← 评估套件: 数据集评估、指标计算</div>
+<br>
+<div style="color: #888;"># 保留现有文件作为 Adapter 层</div>
+<div>├── testcase_prompt.py      ← build_xxx_prompt() 继续工作</div>
+<div>├── submission_prompt.py    ← 不改动</div>
+<div>├── quick_prompt.py         ← 不改动</div>
+<div>├── append_prompt.py        ← 不改动</div>
+<div>└── impact_prompt.py        ← 不改动</div>
+<br>
+<div style="color: #888;"># 调用链</div>
+<div>TestCaseGenerator._phase4_module_detail()</div>
+<div>  → build_module_detail_prompt()         ← 组装上下文数据</div>
+<div>  → PromptManager.render("phase4", ctx)  ← 从 YAML 加载 + 注入 context</div>
+<div>  → llm_client.create_chat_completion()  ← 调用不变</div>
+    </div>
+  </div>
+</div>
