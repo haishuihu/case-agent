@@ -24,7 +24,7 @@ export function DateCalculator() {
   const [result, setResult] = useState<string | null>(null);
 
   const handleCompute = () => {
-    if (!baseDate || !days || days < 1) return;
+    if (!baseDate || !baseDate.isValid() || !days || days < 1) return;
     const delta = days - 1;
     const target =
       mode === "add"
@@ -50,7 +50,7 @@ export function DateCalculator() {
             </Typography.Text>
             <DatePicker
               value={baseDate}
-              onChange={(d) => setBaseDate(d)}
+              onChange={(d) => { setBaseDate(d); setResult(null); }}
               placeholder="选择日期"
               style={{ width: "100%" }}
               format="YYYY-MM-DD"
@@ -66,7 +66,7 @@ export function DateCalculator() {
             </Typography.Text>
             <Radio.Group
               value={mode}
-              onChange={(e) => setMode(e.target.value)}
+              onChange={(e) => { setMode(e.target.value); setResult(null); }}
               optionType="button"
               buttonStyle="solid"
             >
@@ -84,7 +84,7 @@ export function DateCalculator() {
             </Typography.Text>
             <InputNumber
               value={days}
-              onChange={(v) => setDays(v)}
+              onChange={(v) => { setDays(v); setResult(null); }}
               placeholder="输入正整数天数"
               min={1}
               precision={0}
