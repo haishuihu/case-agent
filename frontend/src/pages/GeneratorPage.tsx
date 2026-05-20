@@ -20,14 +20,13 @@ import {
   clearAllGenerationTasks,
   getTaskStatus,
   listGenerationTasks,
-  listModels,
   submitGenerateAsync,
   summarizeRequirementFromFiles,
   type GenerateResult,
-  type ModelOption,
   type RequirementSummaryResult,
   type TaskListItemPayload,
 } from "../services/api";
+import { useModelConfig } from "../context/ModelConfigContext";
 
 const { TextArea } = Input;
 
@@ -56,8 +55,7 @@ export function GeneratorPage() {
   const [documentFileList, setDocumentFileList] = useState<UploadFile[]>([]);
   const [imageFileList, setImageFileList] = useState<UploadFile[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
-  const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
-  const [selectedModelKey, setSelectedModelKey] = useState<string>();
+  const { modelOptions, selectedModelKey, setSelectedModelKey, selectedModel } = useModelConfig();
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState("");
   const [summaryPreview, setSummaryPreview] = useState<RequirementSummaryResult | null>(null);
@@ -70,8 +68,10 @@ export function GeneratorPage() {
   const [historyLoadError, setHistoryLoadError] = useState<string | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [historyClearing, setHistoryClearing] = useState(false);
-  /** 后端仅返回已配置 API Key 的模型；全部未配置时列表为空 */
-  const [modelListHint, setModelListHint] = useState<string | null>(null);
+  const [modelListHintDismissed, setModelListHintDismissed] = useState(false);
+  const modelListHint = !modelListHintDismissed && modelOptions.length === 0
+    ? "未检测到可用模型：列表仅包含已在后端配置 API Key 的供应商。请在 backend 目录下的 .env 中至少设置 LLM_API_KEY、DEEPSEEK_API_KEY 或 MINIMAX_API_KEY（可参考项目根目录 .env.example），保存后重启后端，再刷新本页。"
+    : null;
   const [showReviewPanel, setShowReviewPanel] = useState(false);
   const [showAppendPanel, setShowAppendPanel] = useState(false);
   const [generatedCases, setGeneratedCases] = useState<string>("");
@@ -128,26 +128,6 @@ export function GeneratorPage() {
   }, [historyDrawerOpen, historyRefreshKey]);
 
   useEffect(() => {
-    const loadModels = async () => {
-      try {
-        const options = await listModels();
-        setModelOptions(options);
-        setSelectedModelKey((current) => current ?? options[0]?.key);
-        setModelListHint(
-          options.length === 0
-            ? "未检测到可用模型：列表仅包含已在后端配置 API Key 的供应商。请在 backend 目录下的 .env 中至少设置 LLM_API_KEY、DEEPSEEK_API_KEY 或 MINIMAX_API_KEY（可参考项目根目录 .env.example），保存后重启后端，再刷新本页。"
-            : null
-        );
-      } catch (error) {
-        setModelListHint(null);
-        messageApi.error(error instanceof Error ? error.message : "加载模型列表失败。");
-      }
-    };
-
-    void loadModels();
-  }, [messageApi]);
-
-  useEffect(() => {
     if (pollError) setErrorMessage(pollError);
   }, [pollError]);
 
@@ -159,8 +139,6 @@ export function GeneratorPage() {
       messageApi.info("任务已取消。");
     }
   }, [taskStatus, messageApi]);
-
-  const selectedModel = modelOptions.find((m) => m.key === selectedModelKey);
 
   const runGenerateAsync = async (finalRequirementText: string) => {
     setErrorMessage("");
@@ -323,7 +301,7 @@ export function GeneratorPage() {
           showIcon
           closable
           message={modelListHint}
-          onClose={() => setModelListHint(null)}
+          onClose={() => setModelListHintDismissed(true)}
           style={{ marginBottom: 16 }}
         />
       )}

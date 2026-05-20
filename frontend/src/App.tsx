@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { GenerationTaskProvider } from "./context/GenerationTaskContext";
+import { ModelConfigProvider } from "./context/ModelConfigContext";
 import { AutoTestDashboard, CaseListPage, ExecutionDetailPage, ExecutionListPage, PlanListPage, RecommendPage, SuiteListPage } from "./pages/AutoTest";
 import { ConfigPage } from "./pages/ConfigPage";
 import { DefectListPage } from "./pages/DefectListPage";
@@ -17,8 +18,9 @@ import { TranslationPage } from "./pages/TranslationPage";
 function App() {
   return (
     <BrowserRouter>
-      <GenerationTaskProvider>
-        <Routes>
+      <ModelConfigProvider>
+        <GenerationTaskProvider>
+          <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<GeneratorPage />} />
             <Route path="quick" element={<QuickGeneratePage />} />
@@ -40,8 +42,9 @@ function App() {
             <Route path="auto-test/executions" element={<ExecutionListPage />} />
             <Route path="auto-test/executions/:id" element={<ExecutionDetailPage />} />
           </Route>
-        </Routes>
-      </GenerationTaskProvider>
+          </Routes>
+        </GenerationTaskProvider>
+      </ModelConfigProvider>
     </BrowserRouter>
   );
 }

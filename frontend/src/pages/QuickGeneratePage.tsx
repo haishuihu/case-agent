@@ -36,14 +36,13 @@ import remarkGfm from "remark-gfm";
 import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 
 import {
-  listModels,
   quickGenerate,
   listQuickGenerateHistory,
   clearQuickGenerateHistory,
-  type ModelOption,
   type QuickGenerateResult,
   type QuickHistoryItem,
 } from "../services/api";
+import { useModelConfig } from "../context/ModelConfigContext";
 
 const { TextArea } = Input;
 const { Dragger } = Upload;
@@ -105,9 +104,8 @@ function ReadinessItem({
 
 export function QuickGeneratePage() {
   const [messageApi, contextHolder] = message.useMessage();
+  const { modelOptions, selectedModelKey, setSelectedModelKey } = useModelConfig();
   const [requirementText, setRequirementText] = useState("");
-  const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
-  const [selectedModelKey, setSelectedModelKey] = useState<string>();
   const [documentFileList, setDocumentFileList] = useState<UploadFile[]>([]);
   const [imageFileList, setImageFileList] = useState<UploadFile[]>([]);
   const [generating, setGenerating] = useState(false);
@@ -119,15 +117,6 @@ export function QuickGeneratePage() {
   const [historyItems, setHistoryItems] = useState<QuickHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyOverride, setHistoryOverride] = useState<QuickHistoryItem | null>(null);
-
-  useEffect(() => {
-    listModels()
-      .then((opts) => {
-        setModelOptions(opts);
-        setSelectedModelKey((k) => k ?? opts[0]?.key);
-      })
-      .catch(() => {});
-  }, []);
 
   // Load history when drawer opens
   useEffect(() => {

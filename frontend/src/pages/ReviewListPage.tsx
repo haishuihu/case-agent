@@ -39,7 +39,7 @@ import {
   runAIReview,
   type CaseReview,
 } from "../services/review";
-import { listModels, type ModelOption } from "../services/api";
+import { useModelConfig } from "../context/ModelConfigContext";
 
 const STATUS_FILTERS = [
   { label: "全部", value: "all" },
@@ -92,11 +92,10 @@ function CreateReviewModal({ open, initialValues, onClose, onSuccess }: CreateRe
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [runAiImmediately, setRunAiImmediately] = useState(false);
-  const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
+  const { modelOptions } = useModelConfig();
 
   useEffect(() => {
     if (open) {
-      void listModels().then((opts) => setModelOptions(opts)).catch(() => {});
       form.setFieldsValue({
         caseTitle: initialValues?.requirementText?.slice(0, 80) ?? "",
         requirementText: initialValues?.requirementText ?? "",
