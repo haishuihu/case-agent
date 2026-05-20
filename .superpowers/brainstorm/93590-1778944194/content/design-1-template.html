@@ -1,0 +1,90 @@
+<h2>设计一：Prompt 模板架构</h2>
+<p class="subtitle">每个 Phase 独立 System Prompt，YAML 模板化，与代码解耦</p>
+
+<div class="section">
+  <h3>核心变化：从「一个 Prompt 打天下」到「按 Phase 精准聚焦」</h3>
+
+  <div style="display: flex; gap: 20px; margin-top: 16px;">
+    <div style="flex: 1;">
+      <div class="label" style="color: #f55;">BEFORE</div>
+      <div class="mockup" style="margin-top: 8px;">
+        <div class="mockup-header">所有 Phase 共享同一个 SYSTEM_PROMPT</div>
+        <div class="mockup-body" style="font-size: 11px; line-height: 1.7; padding: 12px;">
+          <div>SYSTEM_PROMPT (4角色 + 10维度)</div>
+          <div style="color: #55f;">↓</div>
+          <div>Phase1: 需求评审 ← 用同一个</div>
+          <div>Phase2: 批量生成 ← 用同一个</div>
+          <div>Phase3: 冒烟测试 ← 用同一个</div>
+          <div>Phase4: 模块详情 ← 用同一个</div>
+          <div>Phase5: 评审补充 ← 用同一个</div>
+          <div style="margin-top: 8px; color: #f55;">→ 4角色10维度对冒烟测试太重，对模块详情又太浅</div>
+        </div>
+      </div>
+    </div>
+    <div style="flex: 1;">
+      <div class="label" style="color: #5f5;">AFTER</div>
+      <div class="mockup" style="margin-top: 8px;">
+        <div class="mockup-header">每个 Phase 独立 System Prompt</div>
+        <div class="mockup-body" style="font-size: 11px; line-height: 1.7; padding: 12px;">
+          <div style="color: #55f;">Phase1:</div>
+          <div style="margin-left: 12px;">「你是需求分析师」</div>
+          <div style="margin-left: 12px;">只关注：模块识别 + 模糊点发现</div>
+          <div style="color: #55f;">Phase3 (Smoke):</div>
+          <div style="margin-left: 12px;">「你是冒烟测试专家」</div>
+          <div style="margin-left: 12px;">只关注：核心路径 + 关键异常</div>
+          <div style="color: #55f;">Phase4 (Detail):</div>
+          <div style="margin-left: 12px;">「你是测试设计专家」</div>
+          <div style="margin-left: 12px;">只关注：穷尽覆盖 + 边界挖掘</div>
+          <div style="color: #55f;">Phase5 (Review):</div>
+          <div style="margin-left: 12px;">「你是质量审计专家」</div>
+          <div style="margin-left: 12px;">只关注：遗漏发现 + 质量把关</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>YAML 模板结构</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.7; padding: 16px; background: #1a1a2e; color: #e0e0e0;">
+<div style="color: #888;"># prompts/templates/phase4_module_detail.yaml</div>
+<div style="color: #5cf;">name:</div><div> phase4_module_detail</div>
+<div style="color: #5cf;">version:</div><div> "2.1.0"</div>
+<div style="color: #5cf;">description:</div><div> "模块详细测试用例生成"</div>
+<br>
+<div style="color: #5cf;">system_prompt:</div><div style="color: #5cf;"> |</div>
+<div>  你是一个资深测试设计专家，专精于单个功能模块的</div>
+<div>  穷尽式测试用例设计。</div>
+<div>  </div>
+<div>  <span style="color: #ff5;">核心能力：</span></div>
+<div>  - 等价类划分与边界值分析</div>
+<div>  - 状态迁移测试设计</div>
+<div>  - 数据组合与正交分析</div>
+<div>  </div>
+<div>  <span style="color: #ff5;">设计原则：</span></div>
+<div>  - 一个用例只验证一个测试点</div>
+<div>  - 步骤具体到操作级别</div>
+<div>  - 预期结果可观测可验证</div>
+<div>  - 需求不明确的用「待确认」标注</div>
+<br>
+<div style="color: #5cf;">few_shot_examples:</div><div> []  ← 引用 examples/ 目录</div>
+<div style="color: #5cf;">output_schema:</div><div> phase4_output.schema.json</div>
+</div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>与现有代码的关系：Adapter 模式</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.8; padding: 12px;">
+      <div>现有 build_xxx_prompt() 函数 → 保持不变，作为数据组装层</div>
+      <div style="margin: 4px 0; color: #999;">（继续负责拼接 requirement_text + document_contexts + knowledge_context）</div>
+      <div style="color: #55f;">↓</div>
+      <div>新增 PromptManager.render() → 从 YAML 加载模板，注入 context</div>
+      <div style="margin: 4px 0; color: #999;">（替换硬编码的 system_prompt 和任务指令文本）</div>
+      <div style="color: #55f;">↓</div>
+      <div>llm_client.create_chat_completion(system, user) → 调用方式不变</div>
+    </div>
+  </div>
+</div>

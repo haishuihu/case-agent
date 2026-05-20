@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "sub_features": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["id", "name", "description"]
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string"},
+          "description": {"type": "string"},
+          "module": {"type": "string"},
+          "suggestion": {"type": "string"}
+        },
+        "required": ["id", "type", "description"]
+      }
+    },
+    "business_rules": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "data_constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {"type": "string"},
+          "type": {"type": "string"},
+          "length": {"type": "string"},
+          "format": {"type": "string"},
+          "required": {"type": "boolean"}
+        }
+      }
+    }
+  },
+  "required": ["modules"]
+}

@@ -1,0 +1,90 @@
+<h2>设计二：CoT 思维链引导框架</h2>
+<p class="subtitle">用结构化思考步骤替代「凭感觉生成」，解决思考太宽泛和质量不稳定</p>
+
+<div class="section">
+  <h3>核心机制：在 User Prompt 中嵌入思考模板</h3>
+  <p style="font-size: 14px; color: #999; margin-bottom: 16px;">
+    System Prompt 定义「你是谁」，CoT 模板定义「你怎么想」。<br>
+    每个 Phase 有自己的思考链条，用 XML 标签框定思考空间。
+  </p>
+</div>
+
+<div class="section">
+  <h3>以 Phase4 模块详情生成为例</h3>
+  <div class="mockup">
+    <div class="mockup-header">User Prompt 结构（发给模型的实际内容）</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.7; padding: 16px; background: #1a1a2e; color: #e0e0e0;">
+<div style="color: #888;">## 任务上下文</div>
+<div>需求: {requirement_text}</div>
+<div>模块: M01 用户登录</div>
+<div>子功能: 账号密码登录, 验证码登录, 忘记密码</div>
+<div>业务规则: ...</div>
+<div>数据约束: ...</div>
+<div>已有用例: 12条 (P0/P1)</div>
+<br>
+<div style="color: #888;">## 思考步骤（请严格按顺序执行）</div>
+<br>
+<div style="color: #5cf;">&lt;thinking&gt;</div>
+<br>
+<div>&lt;step name="功能理解"&gt;</div>
+<div>1. 这个模块做什么？用户如何与之交互？</div>
+<div>2. 列出所有输入字段和用户操作入口</div>
+<div>3. 识别关键状态和状态转换</div>
+<div>&lt;/step&gt;</div>
+<br>
+<div>&lt;step name="维度映射"&gt;</div>
+<div>对每个覆盖维度，判断是否适用于本模块：</div>
+<div>- 正常流程: [适用/不适用，原因]</div>
+<div>- 边界值: [适用/不适用，原因]</div>
+<div>- 异常处理: [适用/不适用，原因]</div>
+<div>- ... (共10个维度)</div>
+<div>&lt;/step&gt;</div>
+<br>
+<div>&lt;step name="测试点识别"&gt;</div>
+<div>基于适用维度，列出所有需要测试的具体场景点：</div>
+<div>- 正常流程: 场景A, 场景B, 场景C...</div>
+<div>- 边界值: 场景D, 场景E...</div>
+<div style="color: #ff5;">- 注意：需要穷尽但不要重复</div>
+<div>&lt;/step&gt;</div>
+<br>
+<div>&lt;step name="用例设计"&gt;</div>
+<div>为每个测试点设计用例：</div>
+<div>- 标题简洁描述测试意图</div>
+<div>- 步骤可独立执行</div>
+<div>- 预期结果可观测可验证</div>
+<div style="color: #ff5;">- 不确定的地方用「待确认」标注</div>
+<div>&lt;/step&gt;</div>
+<br>
+<div>&lt;step name="自检"&gt;</div>
+<div>1. 是否覆盖了所有适用的维度？</div>
+<div>2. 是否有与已有用例重复的？</div>
+<div>3. 用例数是否达到最低要求？</div>
+<div>4. 每条用例是否可独立执行？</div>
+<div>&lt;/step&gt;</div>
+<br>
+<div style="color: #5cf;">&lt;/thinking&gt;</div>
+<br>
+<div style="color: #888;">## 输出要求</div>
+<div>基于以上思考，只输出 JSON：</div>
+<div>{...}</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>为什么这样设计？</h3>
+  <div style="display: flex; gap: 16px; margin-top: 12px;">
+    <div style="flex: 1; background: #0a0a1a; border-radius: 8px; padding: 16px;">
+      <h4 style="margin-top: 0;">XML 标签框定思考空间</h4>
+      <p style="font-size: 13px; color: #aaa;">用 &lt;thinking&gt; 标签包裹思考过程，模型在标签内自由推理，输出时只取标签外的 JSON。避免思考内容污染输出格式。</p>
+    </div>
+    <div style="flex: 1; background: #0a0a1a; border-radius: 8px; padding: 16px;">
+      <h4 style="margin-top: 0;">维度适用性判断</h4>
+      <p style="font-size: 13px; color: #aaa;">不是所有10个维度都适用于每个模块。让模型先判断「哪些维度相关」，再聚焦精力在相关维度上深挖。解决「面面俱到但都不深入」的问题。</p>
+    </div>
+    <div style="flex: 1; background: #0a0a1a; border-radius: 8px; padding: 16px;">
+      <h4 style="margin-top: 0;">自检步骤内化质量控制</h4>
+      <p style="font-size: 13px; color: #aaa;">生成完后强制自检：覆盖完整？无重复？可执行？把质量把关从「靠运气」变成「靠流程」。</p>
+    </div>
+  </div>
+</div>

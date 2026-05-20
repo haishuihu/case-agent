@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string"},
+          "preconditions": {"type": "array", "items": {"type": "string"}},
+          "steps": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+          "expected_result": {"type": "string"},
+          "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
+          "module": {"type": "string"},
+          "module_id": {"type": "string"},
+          "category": {"type": "string"},
+          "confirmation_note": {"type": ["string", "null"]}
+        },
+        "required": ["title", "steps", "expected_result", "priority"]
+      }
+    }
+  },
+  "required": ["cases"]
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "login-001",
+    "requirement": "用户可以使用手机号和验证码登录系统。登录成功后跳转到首页。如果用户未注册则提示先注册。验证码6位数字，有效期60秒。同一手机号每天最多获取5次验证码。",
+    "module": {"name": "用户登录", "id": "M01", "sub_features": ["手机号输入", "验证码发送", "验证码校验", "登录跳转"]},
+    "rules": ["验证码6位数字60秒有效", "每天最多5次验证码"],
+    "constraints": [
+      {"field": "手机号", "type": "string", "length": "11", "format": "数字", "required": true},
+      {"field": "验证码", "type": "string", "length": "6", "format": "数字", "required": true}
+    ],
+    "must_cover": ["正常登录", "验证码错误", "手机号格式错误", "未注册手机号", "验证码过期"],
+    "expected_min_cases": 12,
+    "quality_checks": ["priority_distribution", "no_duplicates", "actionable_steps"]
+  }
+]

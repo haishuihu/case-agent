@@ -31,7 +31,7 @@ import {
 import type { UploadProps } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { listModels, type ModelOption } from "../services/api";
+import { useModelConfig } from "../context/ModelConfigContext";
 import {
   createTranslation,
   listTranslations,
@@ -57,8 +57,7 @@ export function TranslationPage() {
   const [requirementText, setRequirementText] = useState("");
   const [documentFiles, setDocumentFiles] = useState<UploadFile[]>([]);
   const [imageFiles, setImageFiles] = useState<UploadFile[]>([]);
-  const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
-  const [selectedModelKey, setSelectedModelKey] = useState<string | undefined>();
+  const { modelOptions, selectedModelKey, setSelectedModelKey } = useModelConfig();
   const [translating, setTranslating] = useState(false);
 
   // ---- Result state ----
@@ -71,17 +70,6 @@ export function TranslationPage() {
   const [historyItems, setHistoryItems] = useState<TranslationListItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
-
-  // ---- Load models ----
-  useEffect(() => {
-    listModels().then((models) => {
-      setModelOptions(models);
-      if (models.length > 0 && !selectedModelKey) {
-        setSelectedModelKey(models[0].key);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // ---- Load history ----
   const loadHistory = () => {

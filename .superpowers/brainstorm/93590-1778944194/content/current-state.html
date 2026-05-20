@@ -1,0 +1,93 @@
+<h2>当前提示词工程现状分析</h2>
+<p class="subtitle">基于对 backend/app/prompts/ 和 services/ 的代码审查</p>
+
+<div class="section">
+  <h3>现状架构</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family: monospace; font-size: 13px; line-height: 1.8; padding: 16px;">
+      <div style="margin-bottom: 12px;"><strong>prompts/</strong> (6 files, ~800 lines)</div>
+      <div style="border-left: 2px solid #666; padding-left: 12px; margin-bottom: 8px;">
+        <div>testcase_prompt.py — 493 lines</div>
+        <div style="color: #999;">SYSTEM_PROMPT + 8 build functions</div>
+      </div>
+      <div style="border-left: 2px solid #666; padding-left: 12px; margin-bottom: 8px;">
+        <div>submission_prompt.py — 134 lines</div>
+        <div style="color: #999;">checklist + impact prompts</div>
+      </div>
+      <div style="border-left: 2px solid #666; padding-left: 12px; margin-bottom: 8px;">
+        <div>requirement_translation_prompt.py — 325 lines</div>
+        <div style="color: #999;">system prompt + output template</div>
+      </div>
+      <div style="border-left: 2px solid #666; padding-left: 12px; margin-bottom: 8px;">
+        <div>quick_prompt.py / append_prompt.py / impact_prompt.py</div>
+        <div style="color: #999;">quick mode, gap fill, regression</div>
+      </div>
+      <div style="margin-top: 12px; margin-bottom: 12px;"><strong>services/llm_client.py</strong> — 263 lines</div>
+      <div style="border-left: 2px solid #666; padding-left: 12px;">
+        <div>create_chat_completion() — system + user model</div>
+        <div style="color: #999;">retry × 3, file-based cache, provider fallback</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>识别到的核心问题</h3>
+  <div class="options" data-multiselect>
+    <div class="option">
+      <div class="content">
+        <h3>1. 无版本化 / 不可观测</h3>
+        <p>Prompt 即代码，嵌入在 Python 字符串中，无法追踪哪个版本的 prompt 产出了哪批结果。没有 A/B 测试基础设施</p>
+      </div>
+    </div>
+    <div class="option">
+      <div class="content">
+        <h3>2. 无评估框架</h3>
+        <p>没有自动化的 prompt 质量评估（regression test、eval harness）。无法衡量一次 prompt 修改是变好还是变坏</p>
+      </div>
+    </div>
+    <div class="option">
+      <div class="content">
+        <h3>3. 混合关注点</h3>
+        <p>所有 Phase（需求评审、冒烟测试、模块详情、多视角评审）共享同一个 SYSTEM_PROMPT，但它们的任务完全不同</p>
+      </div>
+    </div>
+    <div class="option">
+      <div class="content">
+        <h3>4. 缺失 Few-Shot 示例</h3>
+        <p>没有 in-context examples 来引导输出质量。单靠指令约束容易产生不稳定输出</p>
+      </div>
+    </div>
+    <div class="option">
+      <div class="content">
+        <h3>5. 缺少 Token 预算管理</h3>
+        <p>没有 context window 感知。大量拼接可能导致超窗截断。cache key 基于全量拼接字符串</p>
+      </div>
+    </div>
+    <div class="option">
+      <div class="content">
+        <h3>6. 无输出护栏 (Guardrails)</h3>
+        <p>JSON 解析失败靠 Markdown fallback + 重试。无 structured output 验证、schema 校验、自动修复层</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Prompt → 调用链路</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.8; padding: 12px;">
+      <div>build_xxx_prompt() → raw string</div>
+      <div style="color: #55f;">&nbsp;&nbsp;↓</div>
+      <div>llm_client.create_chat_completion(system, user)</div>
+      <div style="color: #55f;">&nbsp;&nbsp;↓</div>
+      <div>cache.get("SYS:" + system + "\nUSER:" + user) → cache hit/miss</div>
+      <div style="color: #55f;">&nbsp;&nbsp;↓</div>
+      <div>OpenAI.chat.completions.create(messages=[system, user])</div>
+      <div style="color: #55f;">&nbsp;&nbsp;↓</div>
+      <div>_strip_markdown_fence(content) → parse_cases_response()</div>
+      <div style="color: #55f;">&nbsp;&nbsp;↓</div>
+      <div style="color: #f55;">❌ parse fail → Markdown fallback → 丢失结构化信息</div>
+    </div>
+  </div>
+</div>

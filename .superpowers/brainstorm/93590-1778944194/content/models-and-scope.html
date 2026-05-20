@@ -1,0 +1,49 @@
+<h2>当前项目中的模型使用情况</h2>
+<p class="subtitle">我读到的配置：DeepSeek + MiniMax + OpenAI 三种 provider</p>
+
+<div class="section">
+  <h3>你主要用哪个模型？</h3>
+  <div class="options">
+    <div class="option" data-choice="deepseek" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>DeepSeek (主力)</h3>
+        <p>大部分生成任务都用 DeepSeek，MiniMax 做 fallback</p>
+      </div>
+    </div>
+    <div class="option" data-choice="deepseek-minimax" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>DeepSeek + MiniMax 混合</h3>
+        <p>根据不同阶段/任务类型切换不同模型</p>
+      </div>
+    </div>
+    <div class="option" data-choice="various" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>多种模型都会用</h3>
+        <p>包括 OpenAI 兼容接口，经常切换对比效果</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>优化的范围预期</h3>
+  <div class="options">
+    <div class="option" data-choice="core-only" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>先优化核心生成链路</h3>
+        <p>只优化 testcase_prompt.py，其他模块后续再说</p>
+      </div>
+    </div>
+    <div class="option" data-choice="all-prompts" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>全部 Prompt 一起优化</h3>
+        <p>testcase + submission + quick + append + requirement_translation 全部覆盖</p>
+      </div>
+    </div>
+  </div>
+</div>
