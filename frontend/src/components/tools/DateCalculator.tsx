@@ -96,7 +96,7 @@ export function DateCalculator() {
           <Button
             type="primary"
             block
-            disabled={!baseDate || !days || days < 1}
+            disabled={!baseDate || !baseDate.isValid() || !days || days < 1}
             onClick={handleCompute}
           >
             计算
