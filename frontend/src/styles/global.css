@@ -1570,6 +1570,61 @@ body {
   font-family: var(--font-mono);
 }
 
+/* ── Date Calculator ── */
+.date-calculator .ant-card {
+  background: transparent;
+  border: none;
+}
+
+.date-calculator .ant-card-body {
+  padding: 24px;
+}
+
+.date-calculator .ant-picker {
+  border-radius: var(--radius-sm) !important;
+  border-color: var(--border-card) !important;
+  transition: border-color var(--transition-fast) !important;
+}
+
+.date-calculator .ant-picker-focused {
+  border-color: var(--color-primary) !important;
+  box-shadow: none !important;
+}
+
+.date-calculator .ant-input-number {
+  border-radius: var(--radius-sm) !important;
+  border-color: var(--border-card) !important;
+  transition: border-color var(--transition-fast) !important;
+}
+
+.date-calculator .ant-input-number-focused {
+  border-color: var(--color-primary) !important;
+  box-shadow: none !important;
+}
+
+.date-calculator .ant-radio-button-wrapper {
+  border-radius: var(--radius-sm) !important;
+  transition: background var(--transition-fast);
+}
+
+.date-calculator .ant-radio-button-wrapper:hover {
+  color: var(--text-primary);
+}
+
+.date-calculator .ant-radio-button-wrapper-checked {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.date-calculator-result {
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
 /* ============================================================
    Ant Design Overrides - Global Consistency
    ============================================================ */

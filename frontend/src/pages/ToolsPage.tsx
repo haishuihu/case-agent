@@ -2,10 +2,12 @@ import { Col, Row, Segmented, Typography } from "antd";
 import { useState } from "react";
 import { TimestampTool } from "../components/tools/TimestampTool";
 import { JsonFormatterTool } from "../components/tools/JsonFormatterTool";
+import { DateCalculator } from "../components/tools/DateCalculator";
 
 const TOOL_ITEMS = [
   { label: "时间戳转换", value: "timestamp" },
   { label: "JSON 格式化", value: "json" },
+  { label: "日期计算器", value: "date-calculator" },
 ];
 
 export function ToolsPage() {
@@ -37,6 +39,7 @@ export function ToolsPage() {
           <div className="tool-card-wrapper">
             {activeTool === "timestamp" && <TimestampTool />}
             {activeTool === "json" && <JsonFormatterTool />}
+            {activeTool === "date-calculator" && <DateCalculator />}
           </div>
         </Col>
       </Row>
