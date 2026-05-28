@@ -1,0 +1,106 @@
+<h2>Summary Segment Styles</h2>
+<p class="subtitle">Three ways to visually separate preconditions / steps / expected result</p>
+
+<div class="section">
+  <div class="options">
+    <div class="option" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Flow Segments</h3>
+        <p style="color:#6B7280;font-size:12px;">Each phase in a pill/chip, connected by arrows</p>
+        <div style="background:white;border:1px solid #E9D5FF;border-radius:8px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #F3E8FF;border-left:3px solid #DC2626;">
+            <span style="font-size:11px;font-weight:600;color:#4C1D95;min-width:fit-content;">验证登录</span>
+            <span style="color:#A78BFA;">→</span>
+            <span style="font-size:12px;color:#6B7280;background:#F5F3FF;padding:2px 8px;border-radius:4px;white-space:nowrap;">已注册账号，打开登录页</span>
+            <span style="color:#A78BFA;">→</span>
+            <span style="font-size:12px;color:#4C1D95;background:#F5F3FF;padding:2px 8px;border-radius:4px;white-space:nowrap;">输入密码，点击登录</span>
+            <span style="color:#A78BFA;">→</span>
+            <span style="font-size:12px;color:#22C55E;background:#F0FDF4;padding:2px 8px;border-radius:4px;white-space:nowrap;">跳转管理后台首页</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-left:3px solid #F97316;">
+            <span style="font-size:11px;font-weight:600;color:#4C1D95;min-width:fit-content;">验证密码错误</span>
+            <span style="color:#A78BFA;">→</span>
+            <span style="font-size:12px;color:#6B7280;background:#F5F3FF;padding:2px 8px;border-radius:4px;white-space:nowrap;">已注册账号，打开登录页</span>
+            <span style="color:#A78BFA;">→</span>
+            <span style="font-size:12px;color:#4C1D95;background:#F5F3FF;padding:2px 8px;border-radius:4px;white-space:nowrap;">输入错误密码，点击登录</span>
+            <span style="color:#A78BFA;">→</span>
+            <span style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:2px 8px;border-radius:4px;white-space:nowrap;">提示"密码错误"</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Labeled Inline Segments</h3>
+        <p style="color:#6B7280;font-size:12px;">Each phase with a tiny label badge, connected by arrows</p>
+        <div style="background:white;border:1px solid #E9D5FF;border-radius:8px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #F3E8FF;border-left:3px solid #DC2626;">
+            <span style="font-size:12px;font-weight:600;color:#4C1D95;">验证管理员登录</span>
+            <span style="color:#A78BFA;font-size:14px;">→</span>
+            <span style="display:flex;align-items:center;gap:4px;">
+              <span style="font-size:9px;color:#7C3AED;background:#EDE9FE;padding:1px 4px;border-radius:2px;">前置</span>
+              <span style="font-size:12px;color:#6B7280;">已注册账号，打开登录页</span>
+            </span>
+            <span style="color:#A78BFA;font-size:14px;">→</span>
+            <span style="display:flex;align-items:center;gap:4px;">
+              <span style="font-size:9px;color:#2563EB;background:#DBEAFE;padding:1px 4px;border-radius:2px;">操作</span>
+              <span style="font-size:12px;color:#4C1D95;">输入密码，点击登录</span>
+            </span>
+            <span style="color:#A78BFA;font-size:14px;">→</span>
+            <span style="display:flex;align-items:center;gap:4px;">
+              <span style="font-size:9px;color:#22C55E;background:#F0FDF4;padding:1px 4px;border-radius:2px;">预期</span>
+              <span style="font-size:12px;color:#22C55E;">跳转管理后台首页</span>
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-left:3px solid #F97316;">
+            <span style="font-size:12px;font-weight:600;color:#4C1D95;">验证密码错误提示</span>
+            <span style="color:#A78BFA;font-size:14px;">→</span>
+            <span style="display:flex;align-items:center;gap:4px;">
+              <span style="font-size:9px;color:#7C3AED;background:#EDE9FE;padding:1px 4px;border-radius:2px;">前置</span>
+              <span style="font-size:12px;color:#6B7280;">已注册账号，打开登录页</span>
+            </span>
+            <span style="color:#A78BFA;font-size:14px;">→</span>
+            <span style="display:flex;align-items:center;gap:4px;">
+              <span style="font-size:9px;color:#2563EB;background:#DBEAFE;padding:1px 4px;border-radius:2px;">操作</span>
+              <span style="font-size:12px;color:#4C1D95;">输入错误密码，点击登录</span>
+            </span>
+            <span style="color:#A78BFA;font-size:14px;">→</span>
+            <span style="display:flex;align-items:center;gap:4px;">
+              <span style="font-size:9px;color:#DC2626;background:#FEF2F2;padding:1px 4px;border-radius:2px;">预期</span>
+              <span style="font-size:12px;color:#DC2626;">提示"密码错误"</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="options">
+    <div class="option" data-choice="c" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>Segments with Divider Bars</h3>
+        <p style="color:#6B7280;font-size:12px;">Each phase separated by a thin vertical bar</p>
+        <div style="background:white;border:1px solid #E9D5FF;border-radius:8px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:0;padding:10px 16px;border-bottom:1px solid #F3E8FF;border-left:3px solid #DC2626;">
+            <span style="font-size:12px;font-weight:600;color:#4C1D95;margin-right:14px;">验证管理员登录</span>
+            <span style="font-size:12px;color:#6B7280;padding-right:12px;margin-right:12px;border-right:1px solid #E9D5FF;">已注册账号，打开登录页</span>
+            <span style="font-size:12px;color:#4C1D95;padding-right:12px;margin-right:12px;border-right:1px solid #E9D5FF;">输入密码，点击登录</span>
+            <span style="font-size:12px;color:#22C55E;">跳转管理后台首页</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0;padding:10px 16px;border-left:3px solid #F97316;">
+            <span style="font-size:12px;font-weight:600;color:#4C1D95;margin-right:14px;">验证密码错误提示</span>
+            <span style="font-size:12px;color:#6B7280;padding-right:12px;margin-right:12px;border-right:1px solid #E9D5FF;">已注册账号，打开登录页</span>
+            <span style="font-size:12px;color:#4C1D95;padding-right:12px;margin-right:12px;border-right:1px solid #E9D5FF;">输入错误密码，点击登录</span>
+            <span style="font-size:12px;color:#DC2626;">提示"密码错误"</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

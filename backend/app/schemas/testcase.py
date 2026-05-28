@@ -6,17 +6,11 @@ from pydantic import BaseModel, Field
 
 
 class TestCaseItem(BaseModel):
-    case_id: str = Field(alias="caseId")
-    title: str
-    preconditions: list[str] = Field(default_factory=list)
-    steps: list[str] = Field(default_factory=list)
-    expected_result: str = Field(alias="expectedResult")
-    category: str
+    summary: str
     priority: str = "P2"
     module: str = ""
-    module_id: str = Field(default="", alias="moduleId")
+    category: str = ""
     confirmation_note: Optional[str] = Field(default=None, alias="confirmationNote")
-    source_batch: Optional[str] = Field(default=None, alias="sourceBatch")
 
     model_config = {"populate_by_name": True}
 
