@@ -13,13 +13,7 @@ def _normalize_text(value: str) -> str:
 
 
 def _dedupe_key(case: TestCaseItem) -> str:
-    return "|".join(
-        [
-            _normalize_text(case.title),
-            _normalize_text(" ".join(case.steps)),
-            _normalize_text(case.expected_result),
-        ]
-    )
+    return _normalize_text(case.summary)
 
 
 def dedupe_and_renumber(cases: list[TestCaseItem]) -> list[TestCaseItem]:
@@ -36,28 +30,9 @@ def dedupe_and_renumber(cases: list[TestCaseItem]) -> list[TestCaseItem]:
     deduped.sort(
         key=lambda c: (
             PRIORITY_ORDER.get(c.priority, 9),
-            c.module_id or "",
+            c.module or "",
             c.category,
-            c.title,
         )
     )
 
-    renumbered: list[TestCaseItem] = []
-    for index, case in enumerate(deduped, start=1):
-        renumbered.append(
-            TestCaseItem(
-                caseId=f"TC-{index:03d}",
-                title=case.title,
-                preconditions=case.preconditions,
-                steps=case.steps,
-                expectedResult=case.expected_result,
-                category=case.category,
-                priority=case.priority,
-                module=case.module,
-                moduleId=case.module_id,
-                confirmationNote=case.confirmation_note,
-                sourceBatch=case.source_batch,
-            )
-        )
-
-    return renumbered
+    return deduped
