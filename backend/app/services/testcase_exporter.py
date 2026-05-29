@@ -12,20 +12,22 @@ from openpyxl import Workbook
 
 from app.schemas.testcase import GenerationMetadata, TestCaseItem
 
-HEADER_COLUMNS = ["用例ID", "优先级", "模块", "分类", "测试标题", "前置条件", "测试步骤", "预期结果"]
+HEADER_COLUMNS = ["优先级", "模块", "分类", "测试标题", "测试摘要"]
 
 
 def _escape_markdown_cell(value: str) -> str:
     return value.replace("|", "\\|").replace("\n", "<br>")
 
 
-def _join_lines(lines: list[str]) -> str:
-    return "<br>".join(line.strip() for line in lines if line.strip()) or "-"
-
+def _extract_title(summary: str) -> str:
+    """Extract title part before '：' in summary."""
+    if "：" in summary:
+        return summary.split("：", 1)[0]
+    return summary[:60]
 
 
 def _case_title_display(case: TestCaseItem) -> str:
-    title = case.title
+    title = _extract_title(case.summary)
     if case.confirmation_note:
         title = f"{title} ⚠️待确认：{case.confirmation_note}"
     return title
@@ -58,25 +60,16 @@ def _content_disposition(filename: str) -> str:
 
 def _case_row(case: TestCaseItem) -> list[str]:
     return [
-        case.case_id,
         case.priority,
         case.module or "-",
         case.category,
-        case.title,
-        "\n".join(case.preconditions),
-        "\n".join(case.steps),
-        case.expected_result,
+        _extract_title(case.summary),
+        case.summary,
     ]
 
 
 def _id_prefix(case: TestCaseItem) -> str:
-    """Return the alphabetic prefix for a case: Mxx, E, S, P, U, I, or SMOKE."""
-    cid = (case.case_id or "").upper()
-    # Already have a known prefix
-    for prefix in ("SMOKE-", "M", "E", "S", "P", "U", "I"):
-        if cid.startswith(prefix):
-            return prefix.rstrip("-")
-    # Infer from category
+    """Return the alphabetic prefix for a case: M, E, S, P, U, or I."""
     cat = case.category or ""
     if "异常" in cat or "错误" in cat or "边界" in cat:
         return "E"
@@ -88,44 +81,27 @@ def _id_prefix(case: TestCaseItem) -> str:
         return "U"
     if "国际化" in cat or "i18n" in cat.lower():
         return "I"
-    # Default: treat as module detail, derive from module_id
-    mid = (case.module_id or "").upper()
-    return mid if mid else "M"
+    return "M"
 
 
 
 def build_markdown_table(cases: list[TestCaseItem]) -> str:
+    columns = ["优先级", "模块", "分类", "测试标题", "测试摘要"]
     lines = [
-        "| " + " | ".join(HEADER_COLUMNS) + " |",
-        "| " + " | ".join(["---"] * len(HEADER_COLUMNS)) + " |",
+        "| " + " | ".join(columns) + " |",
+        "| " + " | ".join(["---"] * len(columns)) + " |",
     ]
     for case in cases:
         cells = [
-            _escape_markdown_cell(case.case_id),
             _escape_markdown_cell(case.priority),
             _escape_markdown_cell(case.module or "-"),
             _escape_markdown_cell(case.category),
-            _escape_markdown_cell(case.title),
-            _escape_markdown_cell(_join_lines(case.preconditions)),
-            _escape_markdown_cell(_steps_plain(case.steps)),
-            _escape_markdown_cell(case.expected_result),
+            _escape_markdown_cell(_extract_title(case.summary)),
+            _escape_markdown_cell(case.summary),
         ]
         lines.append("| " + " | ".join(cells) + " |")
-
     return "\n".join(lines)
 
-
-def _steps_fmt(steps: list[str]) -> str:
-    """步骤格式：1.步骤1<br>2.步骤2（数字递增，无空格）。"""
-    items = [s.strip() for s in steps if s.strip()]
-    if not items:
-        return "1. -"
-    return "<br>".join(f"{i}.{t}" for i, t in enumerate(items, start=1))
-
-
-def _steps_plain(steps: list[str]) -> str:
-    """不带编号的步骤（build_markdown_table 用）。"""
-    return _join_lines(steps)
 
 
 def build_skill_template_markdown(
@@ -149,10 +125,10 @@ def build_skill_template_markdown(
         seen: set[str] = set()
         mod_rows = []
         for c in cases:
-            key = c.module_id or c.module or ""
+            key = _id_prefix(c)
             if key and key not in seen:
                 seen.add(key)
-                mod_rows.append((c.module_id or f"M{len(mod_rows)+1:02d}", c.module, ""))
+                mod_rows.append((key, c.module or key, ""))
         if not mod_rows:
             mod_rows = [("M01", "核心功能", "")]
 
@@ -229,28 +205,25 @@ def build_skill_template_markdown(
     lines.append("")
     lines.append("### 2.2 冒烟测试用例")
     lines.append("")
-    lines.append("| 用例编号 | 用例名称 | 优先级 | 前置条件 | 测试步骤 | 预期结果 |")
-    lines.append("|---------|---------|-------|---------|---------|---------|")
+    lines.append("| 用例名称 | 优先级 | 测试摘要 |")
+    lines.append("|---------|-------|---------|")
     for i, c in enumerate(smoke, start=1):
         lines.append(
-            "| {sid} | {title} | {pri} | {pre} | {steps} | {exp} |".format(
-                sid=f"SMOKE-{i:02d}",
+            "| {title} | {pri} | {summary} |".format(
                 title=_escape_markdown_cell(_case_title_display(c)),
                 pri=_escape_markdown_cell(c.priority),
-                pre=_escape_markdown_cell(_join_lines(c.preconditions)),
-                steps=_escape_markdown_cell(_steps_fmt(c.steps)),
-                exp=_escape_markdown_cell(c.expected_result),
+                summary=_escape_markdown_cell(c.summary),
             )
         )
     if not smoke:
-        lines.append("| — | （暂无 P0/P1 冒烟用例） | — | — | — | — |")
+        lines.append("| — | （暂无 P0/P1 冒烟用例） | — |")
 
     lines.extend(["", "### 2.3 冒烟测试快速检查清单", ""])
-    lines.append("| 步骤 | 检查项 | 通过标准 |")
+    lines.append("| 步骤 | 检查项 | 测试摘要 |")
     lines.append("|------|-------|---------|")
     for i, c in enumerate(smoke, start=1):
         lines.append(
-            f"| {i} | {_escape_markdown_cell(c.title)} | {_escape_markdown_cell(c.expected_result[:120] + ('…' if len(c.expected_result) > 120 else ''))} |"
+            f"| {i} | {_escape_markdown_cell(_extract_title(c.summary))} | {_escape_markdown_cell(c.summary[:120] + ('…' if len(c.summary) > 120 else ''))} |"
         )
     if not smoke:
         lines.append("| 1 | （无冒烟用例） | — |")
@@ -282,16 +255,13 @@ def build_skill_template_markdown(
         mod_name = group[0].module or prefix
         lines.append(f"### {prefix} {mod_name}模块")
         lines.append("")
-        lines.append("| 用例编号 | 用例名称 | 前置条件 | 测试步骤 | 预期结果 |")
-        lines.append("|---------|---------|---------|---------|---------|")
+        lines.append("| 用例名称 | 测试摘要 |")
+        lines.append("|---------|---------|")
         for j, c in enumerate(group, start=1):
             lines.append(
-                "| {cid} | {title} | {pre} | {steps} | {exp} |".format(
-                    cid=_escape_markdown_cell(f"{prefix}-{j:03d}"),
+                "| {title} | {summary} |".format(
                     title=_escape_markdown_cell(_case_title_display(c)),
-                    pre=_escape_markdown_cell(_join_lines(c.preconditions)),
-                    steps=_escape_markdown_cell(_steps_fmt(c.steps)),
-                    exp=_escape_markdown_cell(c.expected_result),
+                    summary=_escape_markdown_cell(c.summary),
                 )
             )
         lines.append("")
@@ -304,16 +274,13 @@ def build_skill_template_markdown(
     if "E" in detail_groups:
         lines.append("## 四、异常场景测试用例")
         lines.append("")
-        lines.append("| 用例编号 | 用例名称 | 前置条件 | 测试步骤 | 预期结果 |")
-        lines.append("|---------|---------|---------|---------|---------|")
+        lines.append("| 用例名称 | 测试摘要 |")
+        lines.append("|---------|---------|")
         for j, c in enumerate(detail_groups["E"], start=1):
             lines.append(
-                "| {cid} | {title} | {pre} | {steps} | {exp} |".format(
-                    cid=f"E{j:02d}",
+                "| {title} | {summary} |".format(
                     title=_escape_markdown_cell(_case_title_display(c)),
-                    pre=_escape_markdown_cell(_join_lines(c.preconditions)),
-                    steps=_escape_markdown_cell(_steps_fmt(c.steps)),
-                    exp=_escape_markdown_cell(c.expected_result),
+                    summary=_escape_markdown_cell(c.summary),
                 )
             )
         lines.append("")
@@ -326,16 +293,13 @@ def build_skill_template_markdown(
     if "S" in detail_groups:
         lines.append("## 五、安全测试用例")
         lines.append("")
-        lines.append("| 用例编号 | 用例名称 | 前置条件 | 测试步骤 | 预期结果 |")
-        lines.append("|---------|---------|---------|---------|---------|")
+        lines.append("| 用例名称 | 测试摘要 |")
+        lines.append("|---------|---------|")
         for j, c in enumerate(detail_groups["S"], start=1):
             lines.append(
-                "| {cid} | {title} | {pre} | {steps} | {exp} |".format(
-                    cid=f"S{j:02d}",
+                "| {title} | {summary} |".format(
                     title=_escape_markdown_cell(_case_title_display(c)),
-                    pre=_escape_markdown_cell(_join_lines(c.preconditions)),
-                    steps=_escape_markdown_cell(_steps_fmt(c.steps)),
-                    exp=_escape_markdown_cell(c.expected_result),
+                    summary=_escape_markdown_cell(c.summary),
                 )
             )
         lines.append("")
@@ -348,16 +312,13 @@ def build_skill_template_markdown(
     if "P" in detail_groups:
         lines.append("## 六、性能测试用例")
         lines.append("")
-        lines.append("| 用例编号 | 用例名称 | 前置条件 | 测试步骤 | 预期结果 |")
-        lines.append("|---------|---------|---------|---------|---------|")
+        lines.append("| 用例名称 | 测试摘要 |")
+        lines.append("|---------|---------|")
         for j, c in enumerate(detail_groups["P"], start=1):
             lines.append(
-                "| {cid} | {title} | {pre} | {steps} | {exp} |".format(
-                    cid=f"P{j:02d}",
+                "| {title} | {summary} |".format(
                     title=_escape_markdown_cell(_case_title_display(c)),
-                    pre=_escape_markdown_cell(_join_lines(c.preconditions)),
-                    steps=_escape_markdown_cell(_steps_fmt(c.steps)),
-                    exp=_escape_markdown_cell(c.expected_result),
+                    summary=_escape_markdown_cell(c.summary),
                 )
             )
         lines.append("")
@@ -370,16 +331,13 @@ def build_skill_template_markdown(
     if "U" in detail_groups:
         lines.append("## 七、UI交互测试用例")
         lines.append("")
-        lines.append("| 用例编号 | 用例名称 | 前置条件 | 测试步骤 | 预期结果 |")
-        lines.append("|---------|---------|---------|---------|---------|")
+        lines.append("| 用例名称 | 测试摘要 |")
+        lines.append("|---------|---------|")
         for j, c in enumerate(detail_groups["U"], start=1):
             lines.append(
-                "| {cid} | {title} | {pre} | {steps} | {exp} |".format(
-                    cid=f"U{j:02d}",
+                "| {title} | {summary} |".format(
                     title=_escape_markdown_cell(_case_title_display(c)),
-                    pre=_escape_markdown_cell(_join_lines(c.preconditions)),
-                    steps=_escape_markdown_cell(_steps_fmt(c.steps)),
-                    exp=_escape_markdown_cell(c.expected_result),
+                    summary=_escape_markdown_cell(c.summary),
                 )
             )
         lines.append("")
@@ -392,16 +350,13 @@ def build_skill_template_markdown(
     if "I" in detail_groups:
         lines.append("## 八、国际化测试用例")
         lines.append("")
-        lines.append("| 用例编号 | 用例名称 | 前置条件 | 测试步骤 | 预期结果 |")
-        lines.append("|---------|---------|---------|---------|---------|")
+        lines.append("| 用例名称 | 测试摘要 |")
+        lines.append("|---------|---------|")
         for j, c in enumerate(detail_groups["I"], start=1):
             lines.append(
-                "| {cid} | {title} | {pre} | {steps} | {exp} |".format(
-                    cid=f"I{j:02d}",
+                "| {title} | {summary} |".format(
                     title=_escape_markdown_cell(_case_title_display(c)),
-                    pre=_escape_markdown_cell(_join_lines(c.preconditions)),
-                    steps=_escape_markdown_cell(_steps_fmt(c.steps)),
-                    exp=_escape_markdown_cell(c.expected_result),
+                    summary=_escape_markdown_cell(c.summary),
                 )
             )
         lines.append("")
