@@ -341,6 +341,9 @@ export function GeneratorPage() {
                 )}
                 <Tag color="geekblue">多阶段生成</Tag>
                 <Tag color="purple">Markdown / CSV / Excel 导出</Tag>
+                <Button icon={<HistoryOutlined />} onClick={() => setHistoryDrawerOpen(true)}>
+                  查看历史记录
+                </Button>
               </div>
             </div>
 
