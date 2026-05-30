@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Col, Drawer, Input, Modal, Row, Space, Spin, Tag, Typography, message } from "antd";
+import { Alert, Button, Drawer, Input, Modal, Space, Spin, Tag, Typography, message } from "antd";
 import {
   ThunderboltOutlined,
   FileSearchOutlined,
@@ -15,6 +15,7 @@ import { RequirementInput } from "../components/RequirementInput";
 import { ResultPreview } from "../components/ResultPreview";
 import { ReviewPanel } from "../components/review/ReviewPanel";
 import { AppendGenerate } from "../components/generate/AppendGenerate";
+import { GenerationProgress } from "../components/GenerationProgress";
 import { useGenerationTask } from "../context/GenerationTaskContext";
 import {
   clearAllGenerationTasks,
@@ -50,6 +51,12 @@ export function GeneratorPage() {
     isRunning,
     cancelActiveTask,
   } = useGenerationTask();
+
+  type Phase = 'input' | 'loading' | 'result';
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (isRunning) return 'loading';
+    return 'input';
+  });
 
   const [requirementText, setRequirementText] = useState("");
   const [documentFileList, setDocumentFileList] = useState<UploadFile[]>([]);
@@ -131,6 +138,19 @@ export function GeneratorPage() {
     if (pollError) setErrorMessage(pollError);
   }, [pollError]);
 
+  // Phase transitions based on context state
+  useEffect(() => {
+    if (ctxResult && phase === 'loading') {
+      setPhase('result');
+    }
+  }, [ctxResult, phase]);
+
+  useEffect(() => {
+    if (isRunning && !ctxResult && phase === 'input') {
+      setPhase('loading');
+    }
+  }, [isRunning, ctxResult, phase]);
+
   useEffect(() => {
     if (taskStatus?.status === "failed") {
       setErrorMessage(taskStatus.errorMessage ?? "生成失败，请稍后重试。");
@@ -143,6 +163,7 @@ export function GeneratorPage() {
   const runGenerateAsync = async (finalRequirementText: string) => {
     setErrorMessage("");
     setHistoryOverride(null);
+    setPhase('loading');
     try {
       const { taskId: tid } = await submitGenerateAsync(
         finalRequirementText,
@@ -218,6 +239,7 @@ export function GeneratorPage() {
       messageApi.error(e instanceof Error ? e.message : "取消失败。");
     } finally {
       setCancelling(false);
+      setPhase('input');
     }
   };
 
@@ -226,6 +248,7 @@ export function GeneratorPage() {
       const s = await getTaskStatus(id);
       if (s.result) {
         setHistoryOverride(s.result);
+        setPhase('result');
         setHistoryDrawerOpen(false);
         messageApi.success("已加载历史结果。");
       } else {
@@ -263,26 +286,6 @@ export function GeneratorPage() {
   return (
     <>
       {contextHolder}
-      <div className="workbench-intro">
-        <div className="workbench-intro-main">
-          <Typography.Text className="workbench-intro-eyebrow">AI Test Design Workbench</Typography.Text>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            从需求摘要、文档和图片中组织测试上下文，再输出结构化测试用例
-          </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            左侧整理输入材料与测试关注点，右侧统一查看总览、模块分布、表格和 Markdown 文档结果。
-          </Typography.Paragraph>
-        </div>
-        <div className="workbench-intro-side">
-          {selectedModel && (
-            <Tag icon={<ThunderboltOutlined />} color="blue">
-              {selectedModel.label}
-            </Tag>
-          )}
-          <Tag color="geekblue">多阶段生成</Tag>
-          <Tag color="purple">Markdown / CSV / Excel 导出</Tag>
-        </div>
-      </div>
 
       {errorMessage && (
         <Alert
@@ -306,19 +309,32 @@ export function GeneratorPage() {
         />
       )}
 
-      <Row gutter={[24, 24]} className="generator-layout">
-        <Col xs={24} lg={7} xl={6} className="generator-layout-column">
-          <div className="workspace-column">
-            <div className="workspace-column-header">
-              <Typography.Title level={5} style={{ margin: 0 }}>
-                输入工作区
-              </Typography.Title>
-              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                录入测试重点并整理参考材料
-              </Typography.Text>
+      {/* === Phase: Input === */}
+      {phase === 'input' && (
+        <div className="generate-phase-wrapper">
+          <div className="generate-phase-input">
+            <div className="workbench-intro">
+              <div className="workbench-intro-main">
+                <Typography.Text className="workbench-intro-eyebrow">AI Test Design Workbench</Typography.Text>
+                <Typography.Title level={4} style={{ margin: 0 }}>
+                  从需求摘要、文档和图片中组织测试上下文，再输出结构化测试用例
+                </Typography.Title>
+                <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  填写需求、上传参考文件后，点击"生成测试用例"开始。
+                </Typography.Paragraph>
+              </div>
+              <div className="workbench-intro-side">
+                {selectedModel && (
+                  <Tag icon={<ThunderboltOutlined />} color="blue">
+                    {selectedModel.label}
+                  </Tag>
+                )}
+                <Tag color="geekblue">多阶段生成</Tag>
+                <Tag color="purple">Markdown / CSV / Excel 导出</Tag>
+              </div>
             </div>
 
-            <div className="input-workspace">
+            <div className="workspace-column">
               <RequirementInput
                 value={requirementText}
                 loading={loading}
@@ -337,95 +353,109 @@ export function GeneratorPage() {
               />
             </div>
           </div>
-        </Col>
-        <Col xs={24} lg={17} xl={18} className="generator-layout-column">
-          <div className="workspace-column">
-            <div className="workspace-column-header workspace-column-header--with-actions">
-              <div className="workspace-column-header-text">
-                <Typography.Title level={5} style={{ margin: 0 }}>
-                  结果工作区
-                </Typography.Title>
-                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                  统一查看生成概览、模块拆分、表格和文档格式结果
-                </Typography.Text>
-              </div>
+        </div>
+      )}
+
+      {/* === Phase: Loading === */}
+      {phase === 'loading' && (
+        <div className="generate-phase-wrapper">
+          <div className="generate-phase-loading">
+            <Typography.Title level={4} style={{ textAlign: 'center', marginBottom: 8 }}>
+              AI 正在生成测试用例
+            </Typography.Title>
+            <Typography.Paragraph type="secondary" style={{ textAlign: 'center', marginBottom: 24 }}>
+              正在分析需求文档并生成结构化测试用例，请稍候...
+            </Typography.Paragraph>
+            <GenerationProgress
+              taskStatus={isRunning ? taskStatus : null}
+              onCancel={taskId && taskStatus?.status === 'running' ? handleCancelTask : undefined}
+              cancelling={cancelling}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* === Phase: Result === */}
+      {phase === 'result' && displayResult && (
+        <div className="generate-phase-wrapper">
+          {/* Top toolbar */}
+          <div className="generate-result-topbar">
+            <div className="generate-result-topbar-left">
+              <Button
+                type="default"
+                onClick={() => setPhase('input')}
+              >
+                ← 生成新的用例
+              </Button>
+            </div>
+            <div className="generate-result-topbar-right">
               <Button icon={<HistoryOutlined />} onClick={() => setHistoryDrawerOpen(true)}>
                 生成历史
               </Button>
+              <Button
+                icon={<SafetyCertificateOutlined />}
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (displayResult?.generationId) params.set('generationId', displayResult.generationId);
+                  params.set('requirementText', requirementText);
+                  params.set('generatedCases', generatedCases);
+                  navigate(`/reviews?${params.toString()}`);
+                }}
+              >
+                提交评审
+              </Button>
             </div>
+          </div>
 
-            <ResultPreview
-              result={displayResult}
-              loading={loading && !displayResult}
-              taskStatus={isRunning ? taskStatus : null}
-              onCancelTask={taskId && taskStatus?.status === "running" ? handleCancelTask : undefined}
-              cancellingTask={cancelling}
-            />
-            {displayResult && (
-              <div style={{ marginTop: 0 }}>
-                <Space style={{ marginBottom: 8 }}>
-                  <Button
-                    type="default"
-                    icon={<SafetyCertificateOutlined />}
-                    onClick={() => {
-                      const params = new URLSearchParams();
-                      if (displayResult?.generationId) params.set("generationId", displayResult.generationId);
-                      params.set("requirementText", requirementText);
-                      params.set("generatedCases", generatedCases);
-                      navigate(`/reviews?${params.toString()}`);
-                    }}
-                  >
-                    提交评审
-                  </Button>
-                </Space>
-                {showReviewPanel ? (
-                  <ReviewPanel
-                    requirementText={requirementText}
-                    documentFiles={documentFiles}
-                    imageFiles={imageFiles}
-                    modelKey={selectedModelKey}
-                    generatedCases={generatedCases}
-                    caseTitle={displayResult?.metadata?.caseCount ? `用例生成 (${displayResult.metadata.caseCount}个)` : undefined}
-                    generationId={displayResult?.generationId}
-                  />
-                ) : (
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={() => setShowReviewPanel(true)}
-                    style={{ padding: "4px 0" }}
-                  >
-                    展开 AI 评审面板
-                  </Button>
-                )}
-              </div>
+          {/* Result content */}
+          <ResultPreview
+            result={displayResult}
+            loading={false}
+            taskStatus={null}
+          />
+
+          {/* Review / Append panels */}
+          <div className="generate-result-panels">
+            {showReviewPanel ? (
+              <ReviewPanel
+                requirementText={requirementText}
+                documentFiles={documentFiles}
+                imageFiles={imageFiles}
+                modelKey={selectedModelKey}
+                generatedCases={generatedCases}
+                caseTitle={displayResult?.metadata?.caseCount ? `用例生成 (${displayResult.metadata.caseCount}个)` : undefined}
+                generationId={displayResult?.generationId}
+              />
+            ) : (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setShowReviewPanel(true)}
+                style={{ padding: '4px 0' }}
+              >
+                展开 AI 评审面板
+              </Button>
             )}
-            {/* 追加生成入口 */}
-            {displayResult && (
-              <div style={{ marginTop: 0 }}>
-                {showAppendPanel ? (
-                  <AppendGenerate
-                    modelKey={selectedModelKey}
-                    requirementText={requirementText}
-                    onAppended={(cases) => {
-                      // Could merge into the result display
-                    }}
-                  />
-                ) : (
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={() => setShowAppendPanel(true)}
-                    style={{ padding: "4px 0" }}
-                  >
-                    追加生成遗漏用例
-                  </Button>
-                )}
-              </div>
+
+            {showAppendPanel ? (
+              <AppendGenerate
+                modelKey={selectedModelKey}
+                requirementText={requirementText}
+                onAppended={() => {}}
+              />
+            ) : (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setShowAppendPanel(true)}
+                style={{ padding: '4px 0' }}
+              >
+                追加生成遗漏用例
+              </Button>
             )}
           </div>
-        </Col>
-      </Row>
+        </div>
+      )}
 
       <Drawer
         title={
