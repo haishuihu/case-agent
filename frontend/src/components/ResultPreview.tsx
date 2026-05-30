@@ -3,21 +3,19 @@ import {
   Alert,
   Button,
   Card,
-  Collapse,
   Input,
   Modal,
   Select,
   Space,
-  Table,
   Tabs,
   Tag,
   Tooltip,
   Typography,
   message,
 } from "antd";
-import type { ColumnsType } from "antd/es/table";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { TestCaseCard } from "./TestCaseCard";
 import {
   CopyOutlined,
   FileMarkdownOutlined,
@@ -53,10 +51,10 @@ interface ResultPreviewProps {
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
-  P0: "red",
-  P1: "orange",
-  P2: "blue",
-  P3: "default",
+  P0: "#DC2626",
+  P1: "#F97316",
+  P2: "#2563EB",
+  P3: "#6B7280",
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -66,6 +64,16 @@ const PRIORITY_LABELS: Record<string, string> = {
   P3: "边缘",
 };
 
+function groupByModule(cases: TestCaseItem[]): Map<string, TestCaseItem[]> {
+  const groups = new Map<string, TestCaseItem[]>();
+  for (const c of cases) {
+    const key = c.module || "未分组";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(c);
+  }
+  return groups;
+}
+
 const STAT_CARD_META = [
   { key: "caseCount", label: "总用例数", tone: "accent" },
   { key: "moduleCount", label: "模块数", tone: "default" },
@@ -73,103 +81,6 @@ const STAT_CARD_META = [
   { key: "smokeCount", label: "冒烟用例", tone: "warm" },
 ] as const;
 
-function renderLines(lines: string[]) {
-  return (
-    <div className="cell-lines">
-      {lines.map((line, index) => (
-        <div key={`${line}-${index}`}>{line}</div>
-      ))}
-    </div>
-  );
-}
-
-const columns: ColumnsType<TestCaseItem> = [
-  {
-    title: "用例ID",
-    dataIndex: "caseId",
-    key: "caseId",
-    width: 90,
-    fixed: "left",
-    render: (v: string) => (
-      <Typography.Text code style={{ fontSize: 12 }}>
-        {v}
-      </Typography.Text>
-    ),
-  },
-  {
-    title: "优先级",
-    dataIndex: "priority",
-    key: "priority",
-    width: 80,
-    render: (value: string) => (
-      <Tag color={PRIORITY_COLORS[value] ?? "default"}>{value}</Tag>
-    ),
-  },
-  {
-    title: "模块",
-    dataIndex: "module",
-    key: "module",
-    width: 120,
-    render: (value: string) =>
-      value ? (
-        <Typography.Text ellipsis={{ tooltip: value }} style={{ maxWidth: 110 }}>
-          {value}
-        </Typography.Text>
-      ) : (
-        "-"
-      ),
-  },
-  {
-    title: "分类",
-    dataIndex: "category",
-    key: "category",
-    width: 120,
-    render: (value: string) => <Tag className="case-category-tag">{value}</Tag>,
-  },
-  {
-    title: "测试标题",
-    dataIndex: "title",
-    key: "title",
-    width: 260,
-    render: (value: string, record: TestCaseItem) =>
-      record.confirmationNote ? (
-        <Tooltip title={record.confirmationNote}>
-          <div className="case-title-cell">
-            <Typography.Text className="case-title-text">{value}</Typography.Text>
-            <div className="case-title-meta">
-              <Tag color="warning" style={{ fontSize: 11 }}>
-                待确认
-              </Tag>
-            </div>
-          </div>
-        </Tooltip>
-      ) : (
-        <div className="case-title-cell">
-          <Typography.Text className="case-title-text">{value}</Typography.Text>
-        </div>
-      ),
-  },
-  {
-    title: "前置条件",
-    dataIndex: "preconditions",
-    key: "preconditions",
-    width: 180,
-    render: (value: string[]) => renderLines(value),
-  },
-  {
-    title: "测试步骤",
-    dataIndex: "steps",
-    key: "steps",
-    width: 240,
-    render: (value: string[]) => renderLines(value),
-  },
-  {
-    title: "预期结果",
-    dataIndex: "expectedResult",
-    key: "expectedResult",
-    width: 220,
-  },
-];
 
 export function ResultPreview({
   result,
@@ -201,9 +112,8 @@ export function ResultPreview({
       const q = searchText.toLowerCase();
       cases = cases.filter(
         (c) =>
-          c.title.toLowerCase().includes(q) ||
-          c.caseId.toLowerCase().includes(q) ||
-          c.expectedResult.toLowerCase().includes(q)
+          c.summary.toLowerCase().includes(q) ||
+          (c.confirmationNote ?? "").toLowerCase().includes(q)
       );
     }
     return cases;
@@ -215,15 +125,6 @@ export function ResultPreview({
     return Array.from(modules).map((m) => ({ value: m, label: m }));
   }, [result]);
 
-  const groupedByModule = useMemo(() => {
-    const groups: Record<string, TestCaseItem[]> = {};
-    for (const c of filteredCases) {
-      const key = c.module || "未分组";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(c);
-    }
-    return groups;
-  }, [filteredCases]);
 
   const smokeCases = useMemo(
     () => (result ? result.cases.filter((c) => c.priority === "P0") : []),
@@ -469,15 +370,7 @@ export function ResultPreview({
         <FireOutlined />
         冒烟测试用例（P0）· {smokeCases.length} 条
       </div>
-      <Table
-        className="result-table"
-        rowKey="caseId"
-        columns={columns.filter((c) => c.key !== "priority" && c.key !== "module")}
-        dataSource={smokeCases}
-        pagination={false}
-        scroll={{ x: 900 }}
-        size="small"
-      />
+      <TestCaseCard cases={smokeCases} searchText={searchText} />
     </div>
   );
 
@@ -714,18 +607,7 @@ export function ResultPreview({
               children: (
                 <>
                   {filterBar}
-                  <Table
-                    className="result-table"
-                    rowKey="caseId"
-                    columns={columns}
-                    dataSource={filteredCases}
-                    rowClassName={(record) =>
-                      `result-table-row${record.confirmationNote ? " has-confirmation" : ""}`
-                    }
-                    pagination={{ pageSize: 20, showSizeChanger: true }}
-                    scroll={{ x: 1400 }}
-                    size="small"
-                  />
+                  <TestCaseCard cases={filteredCases} searchText={searchText} />
                 </>
               ),
             },
@@ -740,46 +622,25 @@ export function ResultPreview({
                 <>
                   {filterBar}
                   {smokePanel}
-                  <Collapse
-                    defaultActiveKey={Object.keys(groupedByModule)}
-                    items={Object.entries(groupedByModule).map(
-                      ([mod, cases]) => ({
-                        key: mod,
-                        label: (
-                          <Space>
-                            <Typography.Text strong>{mod}</Typography.Text>
-                            <Tag>{cases.length} 条</Tag>
-                            {["P0", "P1", "P2", "P3"].map((p) => {
-                              const n = cases.filter(
-                                (c) => c.priority === p
-                              ).length;
-                              return n > 0 ? (
-                                <Tag key={p} color={PRIORITY_COLORS[p]} style={{ fontSize: 11 }}>
-                                  {p}:{n}
-                                </Tag>
-                              ) : null;
-                            })}
-                          </Space>
-                        ),
-                        children: (
-                          <Table
-                            className="result-table"
-                            rowKey="caseId"
-                            columns={columns.filter(
-                              (c) => c.key !== "module"
-                            )}
-                            dataSource={cases}
-                            rowClassName={(record) =>
-                              `result-table-row${record.confirmationNote ? " has-confirmation" : ""}`
-                            }
-                            pagination={false}
-                            scroll={{ x: 1100 }}
-                            size="small"
-                          />
-                        ),
-                      })
-                    )}
-                  />
+                  {Array.from(groupByModule(filteredCases).entries()).map(
+                    ([mod, cases]) => (
+                      <div key={mod} className="module-group">
+                        <div className="module-group-header">
+                          <span className="module-group-name">{mod}</span>
+                          <Tag>{cases.length} 条</Tag>
+                          {["P0", "P1", "P2", "P3"].map((p) => {
+                            const n = cases.filter((c) => c.priority === p).length;
+                            return n > 0 ? (
+                              <Tag key={p} color={PRIORITY_COLORS[p]} style={{ fontSize: 11 }}>
+                                {p}:{n}
+                              </Tag>
+                            ) : null;
+                          })}
+                        </div>
+                        <TestCaseCard cases={cases} searchText={searchText} />
+                      </div>
+                    )
+                  )}
                 </>
               ),
             },
