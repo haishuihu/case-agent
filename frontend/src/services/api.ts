@@ -1,15 +1,9 @@
 export interface TestCaseItem {
-  caseId: string;
-  title: string;
-  preconditions: string[];
-  steps: string[];
-  expectedResult: string;
-  category: string;
+  summary: string;
   priority: string;
   module: string;
-  moduleId: string;
+  category: string;
   confirmationNote?: string | null;
-  sourceBatch?: string | null;
 }
 
 export interface ReviewQuestionItem {
