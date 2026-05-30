@@ -172,6 +172,8 @@ export function GeneratorPage() {
     setErrorMessage("");
     setHistoryOverride(null);
     setPhase('loading');
+    setShowReviewPanel(false);
+    setShowAppendPanel(false);
     try {
       const { taskId: tid } = await submitGenerateAsync(
         finalRequirementText,
@@ -247,7 +249,6 @@ export function GeneratorPage() {
       messageApi.error(e instanceof Error ? e.message : "取消失败。");
     } finally {
       setCancelling(false);
-      setPhase(p => p === 'loading' ? 'input' : p);
     }
   };
 
@@ -377,7 +378,7 @@ export function GeneratorPage() {
             </Typography.Paragraph>
             <GenerationProgress
               taskStatus={isRunning ? taskStatus : null}
-              onCancel={taskId && taskStatus?.status === 'running' ? handleCancelTask : undefined}
+              onCancel={taskId && (taskStatus == null || taskStatus.status === 'running') ? handleCancelTask : undefined}
               cancelling={cancelling}
             />
           </div>
@@ -392,7 +393,11 @@ export function GeneratorPage() {
             <div className="generate-result-topbar-left">
               <Button
                 type="default"
-                onClick={() => setPhase('input')}
+                onClick={() => {
+                  setPhase('input');
+                  setShowReviewPanel(false);
+                  setShowAppendPanel(false);
+                }}
               >
                 ← 生成新的用例
               </Button>
