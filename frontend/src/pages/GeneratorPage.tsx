@@ -151,6 +151,14 @@ export function GeneratorPage() {
     }
   }, [isRunning, ctxResult, phase]);
 
+  // When task fails or is cancelled, ctxResult stays null and isRunning becomes false.
+  // Move from 'loading' back to 'input' so the user isn't stuck on a spinner.
+  useEffect(() => {
+    if (!isRunning && !ctxResult && phase === 'loading') {
+      setPhase('input');
+    }
+  }, [isRunning, ctxResult, phase]);
+
   useEffect(() => {
     if (taskStatus?.status === "failed") {
       setErrorMessage(taskStatus.errorMessage ?? "生成失败，请稍后重试。");
@@ -239,7 +247,7 @@ export function GeneratorPage() {
       messageApi.error(e instanceof Error ? e.message : "取消失败。");
     } finally {
       setCancelling(false);
-      setPhase('input');
+      setPhase(p => p === 'loading' ? 'input' : p);
     }
   };
 
@@ -266,6 +274,7 @@ export function GeneratorPage() {
       const result = await clearAllGenerationTasks();
       setHistoryItems([]);
       setHistoryOverride(null);
+      setPhase('input');
       // 通知 context 停止轮询并清除残留的活动任务 ID
       stopPolling();
       if (result.cancelledRunningCount > 0) {
