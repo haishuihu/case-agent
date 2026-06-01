@@ -65,14 +65,14 @@ def _build_metadata(cases: list[GeneratedTestCase]) -> GenerationMetadata:
         priority_counts[pri] = priority_counts.get(pri, 0) + 1
 
     return GenerationMetadata(
-        caseCount=total,
-        categoryCounts=category_counts,
-        moduleCounts=module_counts,
-        priorityCounts=priority_counts,
-        reviewQuestions=[],
+        case_count=total,
+        category_counts=category_counts,
+        module_counts=module_counts,
+        priority_counts=priority_counts,
+        review_questions=[],
         warnings=[],
         truncated=False,
-        incompleteCategories=[],
+        incomplete_categories=[],
     )
 
 
@@ -112,9 +112,9 @@ def _case_to_item(tc: GeneratedTestCase) -> TestCaseItem:
         priority=tc.priority,
         module=tc.module,
         category=tc.category,
-        confirmationNote=tc.confirmation_note,
+        confirmation_note=tc.confirmation_note,
         source=tc.source,
-        updatedAt=tc.updated_at.isoformat() if tc.updated_at else None,
+        updated_at=tc.updated_at.isoformat() if tc.updated_at else None,
     )
 
 

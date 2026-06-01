@@ -828,7 +828,7 @@ async def websocket_task_progress(websocket: WebSocket, task_id: str):
 # ── Test Case CRUD ──────────────────────────────────────────────
 
 
-@router.get("/tasks/{task_id}/cases", response_model=TestCaseListResponse)
+@router.get("/generate/tasks/{task_id}/cases", response_model=TestCaseListResponse)
 def get_cases(task_id: str, db: Session = Depends(get_db_session)):
     """返回某次生成任务的用例列表（自动从 raw_response 迁移到 test_case_items 表）"""
     record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
@@ -837,7 +837,7 @@ def get_cases(task_id: str, db: Session = Depends(get_db_session)):
     return list_cases(db, task_id)
 
 
-@router.post("/tasks/{task_id}/cases", response_model=TestCaseItem, status_code=201)
+@router.post("/generate/tasks/{task_id}/cases", response_model=TestCaseItem, status_code=201)
 def add_case(task_id: str, body: TestCaseCreate, db: Session = Depends(get_db_session)):
     """新增一条用例"""
     record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
@@ -846,7 +846,7 @@ def add_case(task_id: str, body: TestCaseCreate, db: Session = Depends(get_db_se
     return create_case(db, task_id, body)
 
 
-@router.put("/tasks/{task_id}/cases/{case_id}", response_model=TestCaseItem)
+@router.put("/generate/tasks/{task_id}/cases/{case_id}", response_model=TestCaseItem)
 def edit_case(
     task_id: str, case_id: str, body: TestCaseUpdate, db: Session = Depends(get_db_session)
 ):
@@ -860,7 +860,7 @@ def edit_case(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.delete("/tasks/{task_id}/cases/{case_id}")
+@router.delete("/generate/tasks/{task_id}/cases/{case_id}")
 def delete_case(task_id: str, case_id: str, db: Session = Depends(get_db_session)):
     """软删除一条用例"""
     record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
@@ -872,7 +872,7 @@ def delete_case(task_id: str, case_id: str, db: Session = Depends(get_db_session
     return {"ok": True}
 
 
-@router.post("/tasks/{task_id}/cases/batch-delete")
+@router.post("/generate/tasks/{task_id}/cases/batch-delete")
 def batch_delete_cases(
     task_id: str, body: TestCaseBatchDelete, db: Session = Depends(get_db_session)
 ):
