@@ -189,3 +189,28 @@ def batch_soft_delete(db: Session, case_ids: list[str]) -> int:
     )
     db.commit()
     return count
+
+
+def list_trash(db: Session, task_id: str) -> list[GeneratedTestCase]:
+    """Return soft-deleted cases for a task."""
+    return (
+        db.query(GeneratedTestCase)
+        .filter(GeneratedTestCase.generation_task_id == task_id, GeneratedTestCase.is_deleted == True)
+        .order_by(GeneratedTestCase.updated_at.desc())
+        .all()
+    )
+
+
+def restore_case(db: Session, case_id: str) -> TestCaseItem | None:
+    """Restore a soft-deleted case."""
+    tc = (
+        db.query(GeneratedTestCase)
+        .filter(GeneratedTestCase.id == case_id, GeneratedTestCase.is_deleted == True)
+        .first()
+    )
+    if not tc:
+        return None
+    tc.is_deleted = False
+    db.commit()
+    db.refresh(tc)
+    return _case_to_item(tc)

@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Card,
+  Drawer,
   Input,
   Modal,
   Popconfirm,
@@ -19,6 +20,7 @@ import remarkGfm from "remark-gfm";
 import { TestCaseCard } from "./TestCaseCard";
 import {
   CopyOutlined,
+  DeleteOutlined,
   FileMarkdownOutlined,
   FileExcelOutlined,
   FileTextOutlined,
@@ -29,6 +31,7 @@ import {
   SearchOutlined,
   ExclamationCircleOutlined,
   CheckCircleOutlined,
+  UndoOutlined,
   WarningOutlined,
   FireOutlined,
   ThunderboltOutlined,
@@ -36,6 +39,8 @@ import {
 
 import {
   downloadGenerationExport,
+  fetchTrash,
+  restoreCase,
   type ExportFormat,
   type GenerateResult,
   type TaskStatusPayload,
@@ -57,6 +62,7 @@ interface ResultPreviewProps {
   onDeleteCase?: (tc: TestCaseItem) => void;
   onCreateCase?: (moduleName: string) => void;
   onBatchDelete?: () => void;
+  onTrashRestore?: () => void;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -104,6 +110,7 @@ export function ResultPreview({
   onDeleteCase,
   onCreateCase,
   onBatchDelete,
+  onTrashRestore,
 }: ResultPreviewProps) {
   const [messageApi, contextHolder] = message.useMessage();
   const [priorityFilter, setPriorityFilter] = useState<string | undefined>(
@@ -113,6 +120,9 @@ export function ResultPreview({
     undefined
   );
   const [searchText, setSearchText] = useState("");
+  const [trashDrawerOpen, setTrashDrawerOpen] = useState(false);
+  const [trashItems, setTrashItems] = useState<TestCaseItem[]>([]);
+  const [trashLoading, setTrashLoading] = useState(false);
   const markdown = result?.markdown ?? "";
 
   const filteredCases = useMemo(() => {
@@ -637,6 +647,28 @@ export function ResultPreview({
               children: (
                 <>
                   {filterBar}
+                  {/* Trash button */}
+                  {editable && (
+                    <div style={{ marginBottom: 12 }}>
+                      <Button
+                        icon={<DeleteOutlined />}
+                        onClick={async () => {
+                          setTrashDrawerOpen(true);
+                          setTrashLoading(true);
+                          try {
+                            const items = await fetchTrash(result!.generationId);
+                            setTrashItems(items);
+                          } catch {
+                            setTrashItems([]);
+                          } finally {
+                            setTrashLoading(false);
+                          }
+                        }}
+                      >
+                        回收站
+                      </Button>
+                    </div>
+                  )}
                   {/* Bulk delete bar */}
                   {editable && selectedCaseIds && selectedCaseIds.size > 0 && (
                     <div style={{
@@ -722,6 +754,69 @@ export function ResultPreview({
           ]}
         />
       </Card>
+
+      {/* Trash Drawer */}
+      <Drawer
+        title={
+          <Space>
+            <DeleteOutlined />
+            <span>回收站</span>
+          </Space>
+        }
+        placement="right"
+        width={420}
+        open={trashDrawerOpen}
+        onClose={() => setTrashDrawerOpen(false)}
+      >
+        {trashLoading ? (
+          <Typography.Text type="secondary">加载中...</Typography.Text>
+        ) : trashItems.length === 0 ? (
+          <Typography.Text type="secondary">回收站为空</Typography.Text>
+        ) : (
+          <Space direction="vertical" style={{ width: "100%" }} size="small">
+            {trashItems.map((tc) => (
+              <div
+                key={tc.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 12px",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: 6,
+                  background: "#FFF",
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {tc.summary.split("：")[0] || tc.summary.slice(0, 40)}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>
+                    {tc.module || "未分组"} · {tc.priority}
+                  </div>
+                </div>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<UndoOutlined />}
+                  onClick={async () => {
+                    try {
+                      await restoreCase(result!.generationId, tc.id);
+                      setTrashItems((prev) => prev.filter((t) => t.id !== tc.id));
+                      onTrashRestore?.();
+                      message.success("已恢复");
+                    } catch (e) {
+                      message.error(e instanceof Error ? e.message : "恢复失败");
+                    }
+                  }}
+                >
+                  恢复
+                </Button>
+              </div>
+            ))}
+          </Space>
+        )}
+      </Drawer>
     </>
   );
 }

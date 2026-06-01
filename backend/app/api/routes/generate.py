@@ -49,9 +49,12 @@ from app.schemas.testcase import (
     TestCaseUpdate,
 )
 from app.services.testcase_service import (
+    _case_to_item,
     batch_soft_delete,
     create_case,
     list_cases,
+    list_trash,
+    restore_case,
     soft_delete_case,
     update_case,
 )
@@ -884,4 +887,34 @@ def batch_delete_cases(
         raise HTTPException(status_code=404, detail="任务不存在")
     count = batch_soft_delete(db, body.case_ids)
     return {"deletedCount": count}
+
+
+@router.get(
+    "/generate/tasks/{task_id}/cases/trash",
+    response_model=list[TestCaseItem],
+)
+def get_trash(task_id: str, db: Session = Depends(get_db_session)):
+    """查看回收站中已删除的用例"""
+    record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    items = [_case_to_item(tc) for tc in list_trash(db, task_id)]
+    return items
+
+
+@router.post(
+    "/generate/tasks/{task_id}/cases/{case_id}/restore",
+    response_model=TestCaseItem,
+)
+def restore_deleted_case(
+    task_id: str, case_id: str, db: Session = Depends(get_db_session)
+):
+    """恢复回收站中的用例"""
+    record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    restored = restore_case(db, case_id)
+    if not restored:
+        raise HTTPException(status_code=404, detail="用例不存在或不在回收站中")
+    return restored
 

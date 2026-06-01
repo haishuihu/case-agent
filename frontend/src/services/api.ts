@@ -1005,3 +1005,30 @@ export async function batchDeleteCases(
   }
   return resp.json();
 }
+
+export async function fetchTrash(taskId: string): Promise<TestCaseItem[]> {
+  const url = apiFetchPath(
+    `/api/v1/generate/tasks/${encodeURIComponent(taskId)}/cases/trash`,
+  );
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(text || `获取回收站失败 (HTTP ${resp.status})`);
+  }
+  return resp.json();
+}
+
+export async function restoreCase(
+  taskId: string,
+  caseId: string,
+): Promise<TestCaseItem> {
+  const url = apiFetchPath(
+    `/api/v1/generate/tasks/${encodeURIComponent(taskId)}/cases/${encodeURIComponent(caseId)}/restore`,
+  );
+  const resp = await fetch(url, { method: "POST" });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(text || `恢复用例失败 (HTTP ${resp.status})`);
+  }
+  return resp.json();
+}

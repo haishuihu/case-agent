@@ -568,6 +568,16 @@ export function GeneratorPage() {
             onDeleteCase={handleDeleteSingle}
             onCreateCase={handleOpenCreate}
             onBatchDelete={handleBatchDelete}
+            onTrashRestore={async () => {
+              if (displayResult?.generationId) {
+                try {
+                  const r = await fetchCases(displayResult.generationId);
+                  setEditableCases(r.cases);
+                } catch {
+                  // fallback
+                }
+              }
+            }}
           />
 
           {/* Review / Append panels */}
