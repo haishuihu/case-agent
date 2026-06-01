@@ -482,6 +482,26 @@ export function ResultPreview({
         Excel
       </Button>
       <div className="export-bar-divider" />
+      {editable && (
+        <Button
+          size="small"
+          icon={<DeleteOutlined />}
+          onClick={async () => {
+            setTrashDrawerOpen(true);
+            setTrashLoading(true);
+            try {
+              const items = await fetchTrash(result!.generationId);
+              setTrashItems(items);
+            } catch {
+              setTrashItems([]);
+            } finally {
+              setTrashLoading(false);
+            }
+          }}
+        >
+          回收站
+        </Button>
+      )}
       <Button
         size="small"
         type="primary"
@@ -647,28 +667,6 @@ export function ResultPreview({
               children: (
                 <>
                   {filterBar}
-                  {/* Trash button */}
-                  {editable && (
-                    <div style={{ marginBottom: 12 }}>
-                      <Button
-                        icon={<DeleteOutlined />}
-                        onClick={async () => {
-                          setTrashDrawerOpen(true);
-                          setTrashLoading(true);
-                          try {
-                            const items = await fetchTrash(result!.generationId);
-                            setTrashItems(items);
-                          } catch {
-                            setTrashItems([]);
-                          } finally {
-                            setTrashLoading(false);
-                          }
-                        }}
-                      >
-                        回收站
-                      </Button>
-                    </div>
-                  )}
                   {/* Bulk delete bar */}
                   {editable && selectedCaseIds && selectedCaseIds.size > 0 && (
                     <div style={{
