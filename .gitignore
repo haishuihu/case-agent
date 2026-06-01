@@ -37,3 +37,8 @@ docs
 
 # claude.md
 CLAUDE.md
+
+# Claude Code internal files
+.claude/
+.superpowers/
+.llm_cache/
