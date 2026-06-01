@@ -5,7 +5,7 @@ import json
 from sqlalchemy.orm import Session
 
 from app.models.generation import GenerationRecord
-from app.models.test_case import TestCase
+from app.models.test_case import GeneratedTestCase
 from app.schemas.testcase import (
     GenerationMetadata,
     TestCaseCreate,
@@ -15,7 +15,7 @@ from app.schemas.testcase import (
 )
 
 
-def _migrate_cases_from_raw(db: Session, task_id: str) -> list[TestCase]:
+def _migrate_cases_from_raw(db: Session, task_id: str) -> list[GeneratedTestCase]:
     """Extract cases from raw_response JSON and insert into test_case_items table."""
     record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
     if not record or not record.raw_response:
@@ -32,7 +32,7 @@ def _migrate_cases_from_raw(db: Session, task_id: str) -> list[TestCase]:
 
     cases = []
     for i, case_data in enumerate(cases_data):
-        tc = TestCase(
+        tc = GeneratedTestCase(
             generation_task_id=task_id,
             summary=case_data.get("summary", ""),
             priority=case_data.get("priority", "P2"),
@@ -49,7 +49,7 @@ def _migrate_cases_from_raw(db: Session, task_id: str) -> list[TestCase]:
     return cases
 
 
-def _build_metadata(cases: list[TestCase]) -> GenerationMetadata:
+def _build_metadata(cases: list[GeneratedTestCase]) -> GenerationMetadata:
     """Rebuild GenerationMetadata from current test_case_items rows."""
     total = len(cases)
     category_counts: dict[str, int] = {}
@@ -76,22 +76,22 @@ def _build_metadata(cases: list[TestCase]) -> GenerationMetadata:
     )
 
 
-def get_or_migrate_cases(db: Session, task_id: str) -> list[TestCase]:
+def get_or_migrate_cases(db: Session, task_id: str) -> list[GeneratedTestCase]:
     """Return active cases for a task. Migrate from raw_response on first access."""
     existing = (
-        db.query(TestCase)
+        db.query(GeneratedTestCase)
         .filter(
-            TestCase.generation_task_id == task_id,
-            TestCase.is_deleted == False,
+            GeneratedTestCase.generation_task_id == task_id,
+            GeneratedTestCase.is_deleted == False,
         )
         .first()
     )
 
     if existing is not None:
         return (
-            db.query(TestCase)
-            .filter(TestCase.generation_task_id == task_id, TestCase.is_deleted == False)
-            .order_by(TestCase.sort_order)
+            db.query(GeneratedTestCase)
+            .filter(GeneratedTestCase.generation_task_id == task_id, GeneratedTestCase.is_deleted == False)
+            .order_by(GeneratedTestCase.sort_order)
             .all()
         )
 
@@ -105,7 +105,7 @@ def list_cases(db: Session, task_id: str) -> TestCaseListResponse:
     return TestCaseListResponse(cases=items, metadata=metadata)
 
 
-def _case_to_item(tc: TestCase) -> TestCaseItem:
+def _case_to_item(tc: GeneratedTestCase) -> TestCaseItem:
     return TestCaseItem(
         id=tc.id,
         summary=tc.summary,
@@ -123,14 +123,14 @@ def create_case(db: Session, task_id: str, data: TestCaseCreate) -> TestCaseItem
     get_or_migrate_cases(db, task_id)
 
     max_order = (
-        db.query(TestCase.sort_order)
-        .filter(TestCase.generation_task_id == task_id)
-        .order_by(TestCase.sort_order.desc())
+        db.query(GeneratedTestCase.sort_order)
+        .filter(GeneratedTestCase.generation_task_id == task_id)
+        .order_by(GeneratedTestCase.sort_order.desc())
         .first()
     )
     next_order = (max_order[0] + 1) if max_order else 0
 
-    tc = TestCase(
+    tc = GeneratedTestCase(
         generation_task_id=task_id,
         summary=data.summary,
         priority=data.priority,
@@ -147,12 +147,12 @@ def create_case(db: Session, task_id: str, data: TestCaseCreate) -> TestCaseItem
 
 def update_case(db: Session, case_id: str, data: TestCaseUpdate) -> TestCaseItem:
     tc = (
-        db.query(TestCase)
-        .filter(TestCase.id == case_id, TestCase.is_deleted == False)
+        db.query(GeneratedTestCase)
+        .filter(GeneratedTestCase.id == case_id, GeneratedTestCase.is_deleted == False)
         .first()
     )
     if not tc:
-        raise ValueError(f"TestCase {case_id} not found")
+        raise ValueError(f"GeneratedTestCase {case_id} not found")
 
     if data.summary is not None:
         tc.summary = data.summary
@@ -170,8 +170,8 @@ def update_case(db: Session, case_id: str, data: TestCaseUpdate) -> TestCaseItem
 
 def soft_delete_case(db: Session, case_id: str) -> bool:
     tc = (
-        db.query(TestCase)
-        .filter(TestCase.id == case_id, TestCase.is_deleted == False)
+        db.query(GeneratedTestCase)
+        .filter(GeneratedTestCase.id == case_id, GeneratedTestCase.is_deleted == False)
         .first()
     )
     if not tc:
@@ -183,8 +183,8 @@ def soft_delete_case(db: Session, case_id: str) -> bool:
 
 def batch_soft_delete(db: Session, case_ids: list[str]) -> int:
     count = (
-        db.query(TestCase)
-        .filter(TestCase.id.in_(case_ids), TestCase.is_deleted == False)
+        db.query(GeneratedTestCase)
+        .filter(GeneratedTestCase.id.in_(case_ids), GeneratedTestCase.is_deleted == False)
         .update({"is_deleted": True}, synchronize_session="fetch")
     )
     db.commit()

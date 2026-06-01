@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.session import Base
 
 
-class TestCase(Base):
+class GeneratedTestCase(Base):
     __tablename__ = "test_case_items"
 
     id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid4()))
