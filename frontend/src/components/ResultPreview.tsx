@@ -5,6 +5,7 @@ import {
   Card,
   Input,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Tabs,
@@ -48,6 +49,14 @@ interface ResultPreviewProps {
   taskStatus?: TaskStatusPayload | null;
   onCancelTask?: () => void;
   cancellingTask?: boolean;
+  // Edit mode props
+  editable?: boolean;
+  selectedCaseIds?: Set<string>;
+  onToggleSelect?: (caseId: string) => void;
+  onEditCase?: (tc: TestCaseItem) => void;
+  onDeleteCase?: (tc: TestCaseItem) => void;
+  onCreateCase?: (moduleName: string) => void;
+  onBatchDelete?: () => void;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -88,6 +97,13 @@ export function ResultPreview({
   taskStatus,
   onCancelTask,
   cancellingTask,
+  editable,
+  selectedCaseIds,
+  onToggleSelect,
+  onEditCase,
+  onDeleteCase,
+  onCreateCase,
+  onBatchDelete,
 }: ResultPreviewProps) {
   const [messageApi, contextHolder] = message.useMessage();
   const [priorityFilter, setPriorityFilter] = useState<string | undefined>(
@@ -621,6 +637,27 @@ export function ResultPreview({
               children: (
                 <>
                   {filterBar}
+                  {/* Bulk delete bar */}
+                  {editable && selectedCaseIds && selectedCaseIds.size > 0 && (
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "10px 16px", background: "#FEF2F2", border: "1px solid #FECACA",
+                      borderRadius: 8, marginBottom: 12,
+                    }}>
+                      <span style={{ fontSize: 13, color: "#DC2626", fontWeight: 500 }}>
+                        已选 {selectedCaseIds.size} 条用例
+                      </span>
+                      <Popconfirm
+                        title={`确认删除选中的 ${selectedCaseIds.size} 条用例？`}
+                        onConfirm={onBatchDelete}
+                        okText="确认删除"
+                        cancelText="取消"
+                        okButtonProps={{ danger: true }}
+                      >
+                        <Button danger size="small">删除选中 ({selectedCaseIds.size})</Button>
+                      </Popconfirm>
+                    </div>
+                  )}
                   {smokePanel}
                   {Array.from(groupByModule(filteredCases).entries()).map(
                     ([mod, cases]) => (
@@ -637,7 +674,30 @@ export function ResultPreview({
                             ) : null;
                           })}
                         </div>
-                        <TestCaseCard cases={cases} searchText={searchText} />
+                        <TestCaseCard
+                          cases={cases}
+                          searchText={searchText}
+                          editable={editable}
+                          selectedIds={selectedCaseIds}
+                          onToggleSelect={onToggleSelect}
+                          onEdit={onEditCase}
+                          onDelete={onDeleteCase}
+                        />
+                        {editable && (
+                          <div
+                            onClick={() => onCreateCase?.(mod)}
+                            style={{
+                              padding: "10px 16px", borderTop: "1px dashed #E9D5FF",
+                              display: "flex", alignItems: "center", gap: 8,
+                              fontSize: 13, color: "#7C3AED", cursor: "pointer",
+                              transition: "background 150ms",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "#FAF5FF")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                          >
+                            + 新增用例
+                          </div>
+                        )}
                       </div>
                     )
                   )}

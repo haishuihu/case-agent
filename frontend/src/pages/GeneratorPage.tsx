@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Drawer, Input, Modal, Popconfirm, Space, Spin, Tag, Typography, message } from "antd";
+import { Alert, Button, Drawer, Input, Modal, Space, Spin, Tag, Typography, message } from "antd";
 import {
   ThunderboltOutlined,
   FileSearchOutlined,
@@ -17,7 +17,6 @@ import { ReviewPanel } from "../components/review/ReviewPanel";
 import { AppendGenerate } from "../components/generate/AppendGenerate";
 import { GenerationProgress } from "../components/GenerationProgress";
 import { CaseEditModal } from "../components/CaseEditModal";
-import { TestCaseCard } from "../components/TestCaseCard";
 import {
   fetchCases,
   createCase as apiCreateCase,
@@ -557,33 +556,18 @@ export function GeneratorPage() {
             </div>
           </div>
 
-          {/* Bulk delete bar */}
-          {selectedCaseIds.size > 0 && (
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "10px 16px", background: "#FEF2F2", border: "1px solid #FECACA",
-              borderRadius: 8, marginBottom: 12,
-            }}>
-              <span style={{ fontSize: 13, color: "#DC2626", fontWeight: 500 }}>
-                已选 {selectedCaseIds.size} 条用例
-              </span>
-              <Popconfirm
-                title={`确认删除选中的 ${selectedCaseIds.size} 条用例？`}
-                onConfirm={handleBatchDelete}
-                okText="确认删除"
-                cancelText="取消"
-                okButtonProps={{ danger: true }}
-              >
-                <Button danger size="small">删除选中 ({selectedCaseIds.size})</Button>
-              </Popconfirm>
-            </div>
-          )}
-
           {/* Result content */}
           <ResultPreview
             result={resultForDisplay}
             loading={false}
             taskStatus={null}
+            editable
+            selectedCaseIds={selectedCaseIds}
+            onToggleSelect={handleToggleSelect}
+            onEditCase={handleOpenEdit}
+            onDeleteCase={handleDeleteSingle}
+            onCreateCase={handleOpenCreate}
+            onBatchDelete={handleBatchDelete}
           />
 
           {/* Review / Append panels */}
@@ -626,53 +610,6 @@ export function GeneratorPage() {
               </Button>
             )}
           </div>
-
-          {/* Editable TestCase List (grouped by module) */}
-          {editableCases.length > 0 && (
-            <div style={{ marginTop: 24 }}>
-              <Typography.Title level={5} style={{ marginBottom: 16 }}>
-                用例编辑
-              </Typography.Title>
-              {Array.from(
-                editableCases.reduce((groups, tc) => {
-                  const key = tc.module || "未分组";
-                  if (!groups.has(key)) groups.set(key, []);
-                  groups.get(key)!.push(tc);
-                  return groups;
-                }, new Map<string, TestCaseItem[]>())
-              ).map(([moduleName, cases]) => (
-                <div key={moduleName} className="module-group">
-                  <div className="module-group-header">
-                    <span className="module-group-name">{moduleName}</span>
-                    <span style={{ fontSize: 12, padding: "2px 10px", borderRadius: 9999, background: "#F3E8FF", color: "#7C3AED", fontWeight: 500, marginLeft: 4 }}>
-                      {cases.length} 条
-                    </span>
-                  </div>
-                  <TestCaseCard
-                    cases={cases}
-                    editable
-                    selectedIds={selectedCaseIds}
-                    onToggleSelect={handleToggleSelect}
-                    onEdit={handleOpenEdit}
-                    onDelete={handleDeleteSingle}
-                  />
-                  <div
-                    onClick={() => handleOpenCreate(moduleName)}
-                    style={{
-                      padding: "10px 16px", borderTop: "1px dashed #E9D5FF",
-                      display: "flex", alignItems: "center", gap: 8,
-                      fontSize: 13, color: "#7C3AED", cursor: "pointer",
-                      transition: "background 150ms",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#FAF5FF")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-                  >
-                    + 新增用例
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* CaseEditModal */}
           <CaseEditModal
