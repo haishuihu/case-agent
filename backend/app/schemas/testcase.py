@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+from datetime import datetime as dt_datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 
 class TestCaseItem(BaseModel):
+    id: str = ""
     summary: str
     priority: str = "P2"
     module: str = ""
     category: str = ""
     confirmation_note: Optional[str] = Field(default=None, alias="confirmationNote")
+    source: str = "ai"
+    updated_at: str | None = Field(default=None, alias="updatedAt")
 
     model_config = {"populate_by_name": True}
 
@@ -36,3 +40,27 @@ class GenerationMetadata(BaseModel):
     incomplete_categories: list[str] = Field(default_factory=list, alias="incompleteCategories")
 
     model_config = {"populate_by_name": True}
+
+
+class TestCaseCreate(BaseModel):
+    summary: str
+    priority: str = "P2"
+    module: str = ""
+    category: str = ""
+    source: str = "user"
+
+
+class TestCaseUpdate(BaseModel):
+    summary: str | None = None
+    priority: str | None = None
+    module: str | None = None
+    category: str | None = None
+
+
+class TestCaseBatchDelete(BaseModel):
+    case_ids: list[str]
+
+
+class TestCaseListResponse(BaseModel):
+    cases: list[TestCaseItem]
+    metadata: GenerationMetadata
