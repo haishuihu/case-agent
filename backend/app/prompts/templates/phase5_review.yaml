@@ -28,4 +28,4 @@ output_format: |
   ## 输出要求
   基于以上思考，请只输出 JSON（如果没有遗漏则输出空数组）：
 
-  {{"supplement_cases":[{{"title":"测试标题","preconditions":["前置条件"],"steps":["步骤1"],"expected_result":"预期结果","priority":"P2","module":"模块名","module_id":"M01","category":"评审补充","review_source":"开发工程师视角","confirmation_note":null}}]}}
+  {{"supplement_cases":[{{"summary":"验证场景：前置条件 → 操作 → 预期","priority":"P2","module":"模块名","category":"评审补充","confirmation_note":null}}]}}

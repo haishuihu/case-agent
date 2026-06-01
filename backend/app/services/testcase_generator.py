@@ -516,7 +516,6 @@ class TestCaseGenerator:
                 response.content,
                 default_category="正常流程",
                 default_module=module.name,
-                default_module_id=module.id,
                 default_priority="P2",
             )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
@@ -579,24 +578,8 @@ class TestCaseGenerator:
             )
             fallback_finish_reason = fallback_response.finish_reason
             fallback_response_raw = fallback_response.raw_response
-            md_cases = parse_markdown_table(fallback_response.content)
-            for c in md_cases:
-                parsed_cases.append(
-                    TestCaseItem(
-                        caseId=c.case_id,
-                        title=c.title,
-                        preconditions=c.preconditions,
-                        steps=c.steps,
-                        expectedResult=c.expected_result,
-                        category=c.category,
-                        priority=c.priority or "P2",
-                        module=module.name,
-                        moduleId=module.id,
-                        sourceBatch=module.name,
-                    )
-                )
-            if parsed_cases:
-                warnings.append(f"模块 {module.name} 已从 JSON 降级为 Markdown 解析。")
+            # Markdown fallback no longer supported — parse_markdown_table returns []
+            # Fallback path is intentionally empty; JSON parsing is the only path
 
         effective_finish = fallback_finish_reason or response.finish_reason
         if effective_finish == "length":
@@ -632,7 +615,7 @@ class TestCaseGenerator:
         summary_lines = []
         for c in existing_cases[:100]:
             note = f" [{c.confirmation_note}]" if c.confirmation_note else ""
-            summary_lines.append(f"- [{c.priority}] [{c.module or '-'}] {c.title} → {c.expected_result}{note}")
+            summary_lines.append(f"- [{c.priority}] [{c.module or '-'}] {c.summary}{note}")
         summary = "\n".join(summary_lines)
 
         prompt = build_review_prompt(requirement_text, document_contexts, summary)
@@ -859,7 +842,7 @@ class TestCaseGenerator:
         raw_batches_by_idx: dict[int, tuple[list[TestCaseItem], dict[str, object]]] = {}
 
         def _run_phase4_module(idx: int, module: PlannedModule) -> tuple[int, list[TestCaseItem], dict[str, object]]:
-            existing_titles = [c.title for c in all_cases]
+            existing_titles = [c.summary for c in all_cases]
             parsed_cases, raw_batch = self._phase4_module_detail(
                 requirement_text=requirement_text,
                 document_contexts=document_contexts,

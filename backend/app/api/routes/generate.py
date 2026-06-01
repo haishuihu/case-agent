@@ -41,6 +41,23 @@ from app.services.testcase_exporter import (
     build_xlsx_bytes,
 )
 from app.services.testcase_parser import load_generation_snapshot
+from app.schemas.testcase import (
+    TestCaseBatchDelete,
+    TestCaseCreate,
+    TestCaseItem,
+    TestCaseListResponse,
+    TestCaseUpdate,
+)
+from app.services.testcase_service import (
+    _case_to_item,
+    batch_soft_delete,
+    create_case,
+    list_cases,
+    list_trash,
+    restore_case,
+    soft_delete_case,
+    update_case,
+)
 
 router = APIRouter(tags=["generate"])
 
@@ -809,4 +826,95 @@ async def websocket_task_progress(websocket: WebSocket, task_id: str):
         ]
         if not _active_ws_connections.get(task_id):
             _active_ws_connections.pop(task_id, None)
+
+
+# ── Test Case CRUD ──────────────────────────────────────────────
+
+
+@router.get("/generate/tasks/{task_id}/cases", response_model=TestCaseListResponse)
+def get_cases(task_id: str, db: Session = Depends(get_db_session)):
+    """返回某次生成任务的用例列表（自动从 raw_response 迁移到 test_case_items 表）"""
+    record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return list_cases(db, task_id)
+
+
+@router.post("/generate/tasks/{task_id}/cases", response_model=TestCaseItem, status_code=201)
+def add_case(task_id: str, body: TestCaseCreate, db: Session = Depends(get_db_session)):
+    """新增一条用例"""
+    record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return create_case(db, task_id, body)
+
+
+@router.put("/generate/tasks/{task_id}/cases/{case_id}", response_model=TestCaseItem)
+def edit_case(
+    task_id: str, case_id: str, body: TestCaseUpdate, db: Session = Depends(get_db_session)
+):
+    """编辑一条用例"""
+    record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    try:
+        return update_case(db, case_id, body)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/generate/tasks/{task_id}/cases/{case_id}")
+def delete_case(task_id: str, case_id: str, db: Session = Depends(get_db_session)):
+    """软删除一条用例"""
+    record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    ok = soft_delete_case(db, case_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="用例不存在或已删除")
+    return {"ok": True}
+
+
+@router.post("/generate/tasks/{task_id}/cases/batch-delete")
+def batch_delete_cases(
+    task_id: str, body: TestCaseBatchDelete, db: Session = Depends(get_db_session)
+):
+    """批量软删除用例"""
+    if not body.case_ids:
+        raise HTTPException(status_code=400, detail="请提供要删除的用例ID列表")
+    record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    count = batch_soft_delete(db, body.case_ids)
+    return {"deletedCount": count}
+
+
+@router.get(
+    "/generate/tasks/{task_id}/cases/trash",
+    response_model=list[TestCaseItem],
+)
+def get_trash(task_id: str, db: Session = Depends(get_db_session)):
+    """查看回收站中已删除的用例"""
+    record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    items = [_case_to_item(tc) for tc in list_trash(db, task_id)]
+    return items
+
+
+@router.post(
+    "/generate/tasks/{task_id}/cases/{case_id}/restore",
+    response_model=TestCaseItem,
+)
+def restore_deleted_case(
+    task_id: str, case_id: str, db: Session = Depends(get_db_session)
+):
+    """恢复回收站中的用例"""
+    record = db.query(GenerationRecord).filter(GenerationRecord.id == task_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    restored = restore_case(db, case_id)
+    if not restored:
+        raise HTTPException(status_code=404, detail="用例不存在或不在回收站中")
+    return restored
 

@@ -42,16 +42,15 @@ class StubLLMClient:
     ):
         return LLMGenerationResult(
             markdown=(
-                "| 用例ID | 优先级 | 模块 | 分类 | 测试标题 | 前置条件 | 测试步骤 | 预期结果 |\n"
-                "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
-                "| TC-001 | P0 | 登录模块 | 正常流程 | 登录成功 | 用户已注册 | 输入正确手机号和验证码 | 登录成功并进入首页 |"
+                "| 优先级 | 模块 | 分类 | 测试标题 | 测试摘要 |\n"
+                "| --- | --- | --- | --- | --- |\n"
+                "| P0 | 登录模块 | 正常流程 | 登录成功 | 验证登录成功：已注册用户 → 输入正确手机号和验证码，点击登录 → 登录成功并进入首页 |"
             ),
             prompt_snapshot=requirement_text,
             raw_response=(
-                '{"cases":[{"caseId":"TC-001","title":"登录成功","preconditions":["用户已注册"],'
-                '"steps":["输入正确手机号和验证码"],"expectedResult":"登录成功并进入首页",'
-                '"category":"正常流程","priority":"P0","module":"登录模块","moduleId":"M01",'
-                '"confirmationNote":null,"sourceBatch":"冒烟测试"}],'
+                '{"cases":[{"summary":"验证登录成功：已注册用户 → 输入正确手机号和验证码，点击登录 → 登录成功并进入首页",'
+                '"category":"正常流程","priority":"P0","module":"登录模块",'
+                '"confirmationNote":null}],'
                 '"metadata":{"caseCount":1,"categoryCounts":{"正常流程":1},'
                 '"moduleCounts":{"登录模块":1},"priorityCounts":{"P0":1},'
                 '"reviewQuestions":[],"warnings":[],"truncated":false,'
@@ -60,16 +59,10 @@ class StubLLMClient:
             model_name="stub-model",
             cases=[
                 TestCaseItem(
-                    caseId="TC-001",
-                    title="登录成功",
-                    preconditions=["用户已注册"],
-                    steps=["输入正确手机号和验证码"],
-                    expectedResult="登录成功并进入首页",
+                    summary="验证登录成功：已注册用户 → 输入正确手机号和验证码，点击登录 → 登录成功并进入首页",
                     category="正常流程",
                     priority="P0",
                     module="登录模块",
-                    moduleId="M01",
-                    sourceBatch="冒烟测试",
                 )
             ],
             metadata=GenerationMetadata(
@@ -236,7 +229,7 @@ def test_generate_async_completes_and_poll_returns_result() -> None:
             assert body["status"] == "succeeded"
             assert body["result"] is not None
             assert body["result"]["metadata"]["caseCount"] == 1
-            assert body["result"]["cases"][0]["title"] == "登录成功"
+            assert "登录成功" in body["result"]["cases"][0]["summary"]
 
             listed = client.get("/api/v1/generate/tasks?page=1&pageSize=10")
             assert listed.status_code == 200

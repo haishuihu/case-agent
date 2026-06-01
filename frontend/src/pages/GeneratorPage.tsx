@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Col, Drawer, Input, Modal, Row, Space, Spin, Tag, Typography, message } from "antd";
+import { Alert, Button, Drawer, Input, Modal, Space, Spin, Tag, Typography, message } from "antd";
 import {
   ThunderboltOutlined,
   FileSearchOutlined,
@@ -15,6 +15,16 @@ import { RequirementInput } from "../components/RequirementInput";
 import { ResultPreview } from "../components/ResultPreview";
 import { ReviewPanel } from "../components/review/ReviewPanel";
 import { AppendGenerate } from "../components/generate/AppendGenerate";
+import { GenerationProgress } from "../components/GenerationProgress";
+import { CaseEditModal } from "../components/CaseEditModal";
+import {
+  fetchCases,
+  createCase as apiCreateCase,
+  updateCase as apiUpdateCase,
+  deleteCase as apiDeleteCase,
+  batchDeleteCases as apiBatchDeleteCases,
+  type TestCaseItem,
+} from "../services/api";
 import { useGenerationTask } from "../context/GenerationTaskContext";
 import {
   clearAllGenerationTasks,
@@ -51,6 +61,12 @@ export function GeneratorPage() {
     cancelActiveTask,
   } = useGenerationTask();
 
+  type Phase = 'input' | 'loading' | 'result';
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (isRunning) return 'loading';
+    return 'input';
+  });
+
   const [requirementText, setRequirementText] = useState("");
   const [documentFileList, setDocumentFileList] = useState<UploadFile[]>([]);
   const [imageFileList, setImageFileList] = useState<UploadFile[]>([]);
@@ -75,6 +91,14 @@ export function GeneratorPage() {
   const [showReviewPanel, setShowReviewPanel] = useState(false);
   const [showAppendPanel, setShowAppendPanel] = useState(false);
   const [generatedCases, setGeneratedCases] = useState<string>("");
+  // Test case editing
+  const [editableCases, setEditableCases] = useState<TestCaseItem[]>([]);
+  const [selectedCaseIds, setSelectedCaseIds] = useState<Set<string>>(new Set());
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editModalMode, setEditModalMode] = useState<"create" | "edit">("edit");
+  const [editingCase, setEditingCase] = useState<TestCaseItem | null>(null);
+  const [editingModule, setEditingModule] = useState<string>("");
+  const [saving, setSaving] = useState(false);
 
   const documentFiles = useMemo(
     () => normalizeFiles(documentFileList),
@@ -87,12 +111,42 @@ export function GeneratorPage() {
 
   const displayResult = historyOverride ?? ctxResult;
 
-  // Keep generated cases markdown in sync for review/append
-  useEffect(() => {
-    if (displayResult?.markdown) {
-      setGeneratedCases(displayResult.markdown);
+  // Merge editable cases into display result for up-to-date stats
+  const displayResultWithEdits = useMemo(() => {
+    if (!displayResult) return null;
+    if (!editableCases.length) return displayResult;
+    const total = editableCases.length;
+    const moduleCounts: Record<string, number> = {};
+    const priorityCounts: Record<string, number> = {};
+    const categoryCounts: Record<string, number> = {};
+    for (const c of editableCases) {
+      const m = c.module || "未分组";
+      const p = c.priority || "P2";
+      const cat = c.category || "其他";
+      moduleCounts[m] = (moduleCounts[m] || 0) + 1;
+      priorityCounts[p] = (priorityCounts[p] || 0) + 1;
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
     }
-  }, [displayResult]);
+    return {
+      ...displayResult,
+      cases: editableCases,
+      metadata: {
+        ...displayResult.metadata,
+        caseCount: total,
+        moduleCounts,
+        priorityCounts,
+        categoryCounts,
+      },
+    };
+  }, [displayResult, editableCases]);
+
+  // Keep generatedCases in sync
+  const resultForDisplay = displayResultWithEdits ?? displayResult;
+  useEffect(() => {
+    if (resultForDisplay?.markdown) {
+      setGeneratedCases(resultForDisplay.markdown);
+    }
+  }, [resultForDisplay]);
 
   const handleDocumentChange: UploadProps["onChange"] = ({ fileList }) => {
     setDocumentFileList(fileList);
@@ -131,6 +185,27 @@ export function GeneratorPage() {
     if (pollError) setErrorMessage(pollError);
   }, [pollError]);
 
+  // Phase transitions based on context state
+  useEffect(() => {
+    if (ctxResult && phase === 'loading') {
+      setPhase('result');
+    }
+  }, [ctxResult, phase]);
+
+  useEffect(() => {
+    if (isRunning && !ctxResult && phase === 'input') {
+      setPhase('loading');
+    }
+  }, [isRunning, ctxResult, phase]);
+
+  // When task fails or is cancelled, ctxResult stays null and isRunning becomes false.
+  // Move from 'loading' back to 'input' so the user isn't stuck on a spinner.
+  useEffect(() => {
+    if (!isRunning && !ctxResult && phase === 'loading') {
+      setPhase('input');
+    }
+  }, [isRunning, ctxResult, phase]);
+
   useEffect(() => {
     if (taskStatus?.status === "failed") {
       setErrorMessage(taskStatus.errorMessage ?? "生成失败，请稍后重试。");
@@ -140,9 +215,28 @@ export function GeneratorPage() {
     }
   }, [taskStatus, messageApi]);
 
+  // Fetch editable cases from API when result is available
+  useEffect(() => {
+    if (displayResult?.generationId) {
+      fetchCases(displayResult.generationId)
+        .then((r) => setEditableCases(r.cases))
+        .catch(() => {
+          // Fallback: use displayResult.cases directly
+          setEditableCases(
+            displayResult.cases.map((c) => ({ ...c, id: c.id || "" }))
+          );
+        });
+    } else {
+      setEditableCases([]);
+    }
+  }, [displayResult?.generationId]);
+
   const runGenerateAsync = async (finalRequirementText: string) => {
     setErrorMessage("");
     setHistoryOverride(null);
+    setPhase('loading');
+    setShowReviewPanel(false);
+    setShowAppendPanel(false);
     try {
       const { taskId: tid } = await submitGenerateAsync(
         finalRequirementText,
@@ -226,6 +320,7 @@ export function GeneratorPage() {
       const s = await getTaskStatus(id);
       if (s.result) {
         setHistoryOverride(s.result);
+        setPhase('result');
         setHistoryDrawerOpen(false);
         messageApi.success("已加载历史结果。");
       } else {
@@ -243,6 +338,7 @@ export function GeneratorPage() {
       const result = await clearAllGenerationTasks();
       setHistoryItems([]);
       setHistoryOverride(null);
+      setPhase('input');
       // 通知 context 停止轮询并清除残留的活动任务 ID
       stopPolling();
       if (result.cancelledRunningCount > 0) {
@@ -258,31 +354,80 @@ export function GeneratorPage() {
     }
   };
 
+  // ── Test Case Edit Handlers ──
+
+  const handleToggleSelect = (caseId: string) => {
+    setSelectedCaseIds((prev) => {
+      const next = new Set(prev);
+      next.has(caseId) ? next.delete(caseId) : next.add(caseId);
+      return next;
+    });
+  };
+
+  const handleOpenEdit = (tc: TestCaseItem) => {
+    setEditingCase(tc);
+    setEditModalMode("edit");
+    setEditModalOpen(true);
+  };
+
+  const handleOpenCreate = (moduleName: string) => {
+    setEditingCase(null);
+    setEditingModule(moduleName);
+    setEditModalMode("create");
+    setEditModalOpen(true);
+  };
+
+  const handleSaveCase = async (data: { summary: string; priority: string; module: string; category: string }) => {
+    if (!displayResult?.generationId) return;
+    setSaving(true);
+    try {
+      if (editModalMode === "edit" && editingCase?.id) {
+        const updated = await apiUpdateCase(displayResult.generationId, editingCase.id, data);
+        setEditableCases((prev) => prev.map((c) => (c.id === editingCase.id ? updated : c)));
+        messageApi.success("保存成功");
+      } else {
+        const created = await apiCreateCase(displayResult.generationId, data);
+        setEditableCases((prev) => [...prev, created]);
+        messageApi.success("已添加");
+      }
+      setEditModalOpen(false);
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "操作失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteSingle = async (tc: TestCaseItem) => {
+    if (!displayResult?.generationId || !tc.id) return;
+    try {
+      await apiDeleteCase(displayResult.generationId, tc.id);
+      setEditableCases((prev) => prev.filter((c) => c.id !== tc.id));
+      setSelectedCaseIds((prev) => { const next = new Set(prev); next.delete(tc.id); return next; });
+      messageApi.success("已删除");
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "删除失败");
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (!displayResult?.generationId || selectedCaseIds.size === 0) return;
+    const ids = Array.from(selectedCaseIds);
+    try {
+      const result = await apiBatchDeleteCases(displayResult.generationId, ids);
+      setEditableCases((prev) => prev.filter((c) => !selectedCaseIds.has(c.id)));
+      setSelectedCaseIds(new Set());
+      messageApi.success(`已删除 ${result.deletedCount} 条`);
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "批量删除失败");
+    }
+  };
+
   const loading = isRunning || summaryLoading;
 
   return (
     <>
       {contextHolder}
-      <div className="workbench-intro">
-        <div className="workbench-intro-main">
-          <Typography.Text className="workbench-intro-eyebrow">AI Test Design Workbench</Typography.Text>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            从需求摘要、文档和图片中组织测试上下文，再输出结构化测试用例
-          </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            左侧整理输入材料与测试关注点，右侧统一查看总览、模块分布、表格和 Markdown 文档结果。
-          </Typography.Paragraph>
-        </div>
-        <div className="workbench-intro-side">
-          {selectedModel && (
-            <Tag icon={<ThunderboltOutlined />} color="blue">
-              {selectedModel.label}
-            </Tag>
-          )}
-          <Tag color="geekblue">多阶段生成</Tag>
-          <Tag color="purple">Markdown / CSV / Excel 导出</Tag>
-        </div>
-      </div>
 
       {errorMessage && (
         <Alert
@@ -306,19 +451,35 @@ export function GeneratorPage() {
         />
       )}
 
-      <Row gutter={[24, 24]} className="generator-layout">
-        <Col xs={24} lg={7} xl={6} className="generator-layout-column">
-          <div className="workspace-column">
-            <div className="workspace-column-header">
-              <Typography.Title level={5} style={{ margin: 0 }}>
-                输入工作区
-              </Typography.Title>
-              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                录入测试重点并整理参考材料
-              </Typography.Text>
+      {/* === Phase: Input === */}
+      {phase === 'input' && (
+        <div className="generate-phase-wrapper">
+          <div className="generate-phase-input">
+            <div className="workbench-intro">
+              <div className="workbench-intro-main">
+                <Typography.Text className="workbench-intro-eyebrow">AI Test Design Workbench</Typography.Text>
+                <Typography.Title level={4} style={{ margin: 0 }}>
+                  从需求摘要、文档和图片中组织测试上下文，再输出结构化测试用例
+                </Typography.Title>
+                <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  填写需求、上传参考文件后，点击"生成测试用例"开始。
+                </Typography.Paragraph>
+              </div>
+              <div className="workbench-intro-side">
+                {selectedModel && (
+                  <Tag icon={<ThunderboltOutlined />} color="blue">
+                    {selectedModel.label}
+                  </Tag>
+                )}
+                <Tag color="geekblue">多阶段生成</Tag>
+                <Tag color="purple">Markdown / CSV / Excel 导出</Tag>
+                <Button icon={<HistoryOutlined />} onClick={() => setHistoryDrawerOpen(true)}>
+                  查看历史记录
+                </Button>
+              </div>
             </div>
 
-            <div className="input-workspace">
+            <div className="workspace-column">
               <RequirementInput
                 value={requirementText}
                 loading={loading}
@@ -337,95 +498,141 @@ export function GeneratorPage() {
               />
             </div>
           </div>
-        </Col>
-        <Col xs={24} lg={17} xl={18} className="generator-layout-column">
-          <div className="workspace-column">
-            <div className="workspace-column-header workspace-column-header--with-actions">
-              <div className="workspace-column-header-text">
-                <Typography.Title level={5} style={{ margin: 0 }}>
-                  结果工作区
-                </Typography.Title>
-                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                  统一查看生成概览、模块拆分、表格和文档格式结果
-                </Typography.Text>
-              </div>
+        </div>
+      )}
+
+      {/* === Phase: Loading === */}
+      {phase === 'loading' && (
+        <div className="generate-phase-wrapper">
+          <div className="generate-phase-loading">
+            <Typography.Title level={4} style={{ textAlign: 'center', marginBottom: 8 }}>
+              AI 正在生成测试用例
+            </Typography.Title>
+            <Typography.Paragraph type="secondary" style={{ textAlign: 'center', marginBottom: 24 }}>
+              正在分析需求文档并生成结构化测试用例，请稍候...
+            </Typography.Paragraph>
+            <GenerationProgress
+              taskStatus={isRunning ? taskStatus : null}
+              onCancel={taskId && (taskStatus == null || taskStatus.status === 'running') ? handleCancelTask : undefined}
+              cancelling={cancelling}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* === Phase: Result === */}
+      {phase === 'result' && displayResult && (
+        <div className="generate-phase-wrapper">
+          {/* Top toolbar */}
+          <div className="generate-result-topbar">
+            <div className="generate-result-topbar-left">
+              <Button
+                type="default"
+                onClick={() => {
+                  setPhase('input');
+                  setShowReviewPanel(false);
+                  setShowAppendPanel(false);
+                }}
+              >
+                ← 生成新的用例
+              </Button>
+            </div>
+            <div className="generate-result-topbar-right">
               <Button icon={<HistoryOutlined />} onClick={() => setHistoryDrawerOpen(true)}>
                 生成历史
               </Button>
+              <Button
+                icon={<SafetyCertificateOutlined />}
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (displayResult?.generationId) params.set('generationId', displayResult.generationId);
+                  params.set('requirementText', requirementText);
+                  params.set('generatedCases', generatedCases);
+                  navigate(`/reviews?${params.toString()}`);
+                }}
+              >
+                提交评审
+              </Button>
             </div>
+          </div>
 
-            <ResultPreview
-              result={displayResult}
-              loading={loading && !displayResult}
-              taskStatus={isRunning ? taskStatus : null}
-              onCancelTask={taskId && taskStatus?.status === "running" ? handleCancelTask : undefined}
-              cancellingTask={cancelling}
-            />
-            {displayResult && (
-              <div style={{ marginTop: 0 }}>
-                <Space style={{ marginBottom: 8 }}>
-                  <Button
-                    type="default"
-                    icon={<SafetyCertificateOutlined />}
-                    onClick={() => {
-                      const params = new URLSearchParams();
-                      if (displayResult?.generationId) params.set("generationId", displayResult.generationId);
-                      params.set("requirementText", requirementText);
-                      params.set("generatedCases", generatedCases);
-                      navigate(`/reviews?${params.toString()}`);
-                    }}
-                  >
-                    提交评审
-                  </Button>
-                </Space>
-                {showReviewPanel ? (
-                  <ReviewPanel
-                    requirementText={requirementText}
-                    documentFiles={documentFiles}
-                    imageFiles={imageFiles}
-                    modelKey={selectedModelKey}
-                    generatedCases={generatedCases}
-                    caseTitle={displayResult?.metadata?.caseCount ? `用例生成 (${displayResult.metadata.caseCount}个)` : undefined}
-                    generationId={displayResult?.generationId}
-                  />
-                ) : (
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={() => setShowReviewPanel(true)}
-                    style={{ padding: "4px 0" }}
-                  >
-                    展开 AI 评审面板
-                  </Button>
-                )}
-              </div>
+          {/* Result content */}
+          <ResultPreview
+            result={resultForDisplay}
+            loading={false}
+            taskStatus={null}
+            editable
+            selectedCaseIds={selectedCaseIds}
+            onToggleSelect={handleToggleSelect}
+            onEditCase={handleOpenEdit}
+            onDeleteCase={handleDeleteSingle}
+            onCreateCase={handleOpenCreate}
+            onBatchDelete={handleBatchDelete}
+            onTrashRestore={async () => {
+              if (displayResult?.generationId) {
+                try {
+                  const r = await fetchCases(displayResult.generationId);
+                  setEditableCases(r.cases);
+                } catch {
+                  // fallback
+                }
+              }
+            }}
+          />
+
+          {/* Review / Append panels */}
+          <div className="generate-result-panels">
+            {showReviewPanel ? (
+              <ReviewPanel
+                requirementText={requirementText}
+                documentFiles={documentFiles}
+                imageFiles={imageFiles}
+                modelKey={selectedModelKey}
+                generatedCases={generatedCases}
+                caseTitle={displayResult?.metadata?.caseCount ? `用例生成 (${displayResult.metadata.caseCount}个)` : undefined}
+                generationId={displayResult?.generationId}
+              />
+            ) : (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setShowReviewPanel(true)}
+                style={{ padding: '4px 0' }}
+              >
+                展开 AI 评审面板
+              </Button>
             )}
-            {/* 追加生成入口 */}
-            {displayResult && (
-              <div style={{ marginTop: 0 }}>
-                {showAppendPanel ? (
-                  <AppendGenerate
-                    modelKey={selectedModelKey}
-                    requirementText={requirementText}
-                    onAppended={(cases) => {
-                      // Could merge into the result display
-                    }}
-                  />
-                ) : (
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={() => setShowAppendPanel(true)}
-                    style={{ padding: "4px 0" }}
-                  >
-                    追加生成遗漏用例
-                  </Button>
-                )}
-              </div>
+
+            {showAppendPanel ? (
+              <AppendGenerate
+                modelKey={selectedModelKey}
+                requirementText={requirementText}
+                onAppended={() => {}}
+              />
+            ) : (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setShowAppendPanel(true)}
+                style={{ padding: '4px 0' }}
+              >
+                追加生成遗漏用例
+              </Button>
             )}
           </div>
-        </Col>
-      </Row>
+
+          {/* CaseEditModal */}
+          <CaseEditModal
+            open={editModalOpen}
+            mode={editModalMode}
+            initialData={editingCase ?? undefined}
+            defaultModule={editingModule}
+            onCancel={() => setEditModalOpen(false)}
+            onSave={handleSaveCase}
+            saving={saving}
+          />
+        </div>
+      )}
 
       <Drawer
         title={

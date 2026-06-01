@@ -277,7 +277,6 @@ def parse_cases_response(
     content: str,
     default_category: str,
     default_module: str = "",
-    default_module_id: str = "",
     default_priority: str = "P2",
 ) -> list[TestCaseItem]:
     payload = json.loads(_extract_json_text(content))
@@ -288,52 +287,31 @@ def parse_cases_response(
     )
 
     cases: list[TestCaseItem] = []
-    for index, item in enumerate(raw_cases, start=1):
+    for item in raw_cases:
         if not isinstance(item, dict):
             continue
 
-        title = str(item.get("title") or item.get("测试标题") or "").strip()
-        expected_result = str(
-            item.get("expected_result")
-            or item.get("expectedResult")
-            or item.get("预期结果")
-            or ""
-        ).strip()
-        if not title or not expected_result:
+        summary = str(item.get("summary") or "").strip()
+        if not summary:
             continue
-
-        preconditions = _as_list(item.get("preconditions") or item.get("前置条件"))
-        steps = _as_list(item.get("steps") or item.get("测试步骤"))
 
         priority = str(item.get("priority", default_priority)).strip()
         if priority not in ("P0", "P1", "P2", "P3"):
             priority = default_priority
 
         module = str(item.get("module") or default_module).strip()
-        module_id = str(item.get("module_id") or item.get("moduleId") or default_module_id).strip()
         category = str(item.get("category") or default_category).strip() or default_category
 
         raw_note = item.get("confirmation_note") or item.get("confirmationNote")
         confirmation_note = str(raw_note).strip() if raw_note else None
-        review_source = item.get("review_source")
-
-        source_batch = default_category
-        if review_source:
-            source_batch = f"评审补充-{review_source}"
 
         cases.append(
             TestCaseItem(
-                caseId=f"TEMP-{module_id or default_category}-{index:03d}",
-                title=title,
-                preconditions=preconditions,
-                steps=steps,
-                expectedResult=expected_result,
-                category=category,
+                summary=summary,
                 priority=priority,
                 module=module,
-                moduleId=module_id,
+                category=category,
                 confirmationNote=confirmation_note,
-                sourceBatch=source_batch,
             )
         )
 
@@ -346,62 +324,7 @@ def parse_cases_response(
 
 
 def parse_markdown_table(markdown: str) -> list[TestCaseItem]:
-    lines = [line.strip() for line in markdown.splitlines() if line.strip()]
-    rows = [line for line in lines if line.startswith("|")]
-    if len(rows) < 3:
-        return []
-
-    header = [h.strip().lower() for h in rows[0].strip("|").split("|")]
-    has_priority = any("优先级" in h for h in header)
-    has_module = any("模块" in h for h in header)
-
-    cases: list[TestCaseItem] = []
-    for index, row in enumerate(rows[2:], start=1):
-        columns = [column.strip() for column in row.strip("|").split("|")]
-        if len(columns) < 5:
-            continue
-
-        case_id = columns[0]
-        if case_id.lower() in {"---", ":---", ":---:"}:
-            continue
-
-        col_idx = 1
-        priority = "P2"
-        module = ""
-        category = "未分类"
-
-        if has_priority and len(columns) > 7:
-            priority = columns[col_idx].strip() or "P2"
-            col_idx += 1
-        if has_module and len(columns) > 6:
-            module = columns[col_idx].strip()
-            col_idx += 1
-
-        if len(columns) - col_idx >= 5:
-            category = columns[col_idx].strip() or "未分类"
-            col_idx += 1
-
-        remaining = columns[col_idx:]
-        if len(remaining) < 4:
-            continue
-
-        title, preconditions_str, steps_str, expected_result = remaining[:4]
-
-        cases.append(
-            TestCaseItem(
-                caseId=case_id or f"TC-{index:03d}",
-                title=title,
-                preconditions=[item.strip() for item in preconditions_str.split("<br>") if item.strip()],
-                steps=[item.strip() for item in steps_str.split("<br>") if item.strip()],
-                expectedResult=expected_result,
-                category=category,
-                priority=priority if priority in ("P0", "P1", "P2", "P3") else "P2",
-                module=module,
-                sourceBatch=category,
-            )
-        )
-
-    return cases
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -462,119 +385,82 @@ def parse_batch_cases_response(
 
     raw_smoke = payload.get("smoke_cases", [])
     if isinstance(raw_smoke, list):
-        for index, item in enumerate(raw_smoke, start=1):
+        for item in raw_smoke:
             if not isinstance(item, dict):
                 continue
-            title = str(item.get("title") or "").strip()
-            expected_result = str(
-                item.get("expected_result") or item.get("expectedResult") or ""
-            ).strip()
-            if not title or not expected_result:
+            summary = str(item.get("summary") or "").strip()
+            if not summary:
                 continue
 
-            preconditions = _as_list(item.get("preconditions") or item.get("前置条件"))
-            steps = _as_list(item.get("steps") or item.get("测试步骤"))
             priority = str(item.get("priority", "P0")).strip()
             if priority not in ("P0", "P1", "P2", "P3"):
                 priority = "P0"
             module = str(item.get("module") or "").strip()
-            module_id = str(item.get("module_id") or item.get("moduleId") or "").strip()
             category = str(item.get("category") or "冒烟测试").strip() or "冒烟测试"
             raw_note = item.get("confirmation_note") or item.get("confirmationNote")
             confirmation_note = str(raw_note).strip() if raw_note else None
 
             smoke_cases.append(
                 TestCaseItem(
-                    caseId=f"TEMP-SMOKE-{module_id or 'UNKNOWN'}-{index:03d}",
-                    title=title,
-                    preconditions=preconditions,
-                    steps=steps,
-                    expectedResult=expected_result,
-                    category=category,
+                    summary=summary,
                     priority=priority,
                     module=module,
-                    moduleId=module_id,
+                    category=category,
                     confirmationNote=confirmation_note,
-                    sourceBatch="冒烟测试",
                 )
             )
 
     raw_module = payload.get("module_cases", [])
     if isinstance(raw_module, list):
-        for index, item in enumerate(raw_module, start=1):
+        for item in raw_module:
             if not isinstance(item, dict):
                 continue
-            title = str(item.get("title") or "").strip()
-            expected_result = str(
-                item.get("expected_result") or item.get("expectedResult") or ""
-            ).strip()
-            if not title or not expected_result:
+            summary = str(item.get("summary") or "").strip()
+            if not summary:
                 continue
 
-            preconditions = _as_list(item.get("preconditions") or item.get("前置条件"))
-            steps = _as_list(item.get("steps") or item.get("测试步骤"))
             priority = str(item.get("priority", "P2")).strip()
             if priority not in ("P0", "P1", "P2", "P3"):
                 priority = "P2"
             module = str(item.get("module") or "").strip()
-            module_id = str(item.get("module_id") or item.get("moduleId") or "").strip()
             category = str(item.get("category") or "正常流程").strip() or "正常流程"
             raw_note = item.get("confirmation_note") or item.get("confirmationNote")
             confirmation_note = str(raw_note).strip() if raw_note else None
 
             module_cases.append(
                 TestCaseItem(
-                    caseId=f"TEMP-MOD-{module_id or 'UNKNOWN'}-{index:03d}",
-                    title=title,
-                    preconditions=preconditions,
-                    steps=steps,
-                    expectedResult=expected_result,
-                    category=category,
+                    summary=summary,
                     priority=priority,
                     module=module,
-                    moduleId=module_id,
+                    category=category,
                     confirmationNote=confirmation_note,
-                    sourceBatch=module,
                 )
             )
 
     raw_review = payload.get("review_cases", [])
     if isinstance(raw_review, list):
-        for index, item in enumerate(raw_review, start=1):
+        for item in raw_review:
             if not isinstance(item, dict):
                 continue
-            title = str(item.get("title") or "").strip()
-            expected_result = str(
-                item.get("expected_result") or item.get("expectedResult") or ""
-            ).strip()
-            if not title or not expected_result:
+            summary = str(item.get("summary") or "").strip()
+            if not summary:
                 continue
 
-            preconditions = _as_list(item.get("preconditions") or item.get("前置条件"))
-            steps = _as_list(item.get("steps") or item.get("测试步骤"))
             priority = str(item.get("priority", "P2")).strip()
             if priority not in ("P0", "P1", "P2", "P3"):
                 priority = "P2"
             module = str(item.get("module") or "").strip()
-            module_id = str(item.get("module_id") or item.get("moduleId") or "").strip()
             category = "评审补充"
-            review_source = str(item.get("review_source") or "评审补充").strip()
             raw_note = item.get("confirmation_note") or item.get("confirmationNote")
             confirmation_note = str(raw_note).strip() if raw_note else None
 
             review_cases.append(
                 TestCaseItem(
-                    caseId=f"TEMP-REVIEW-{module_id or 'UNKNOWN'}-{index:03d}",
-                    title=title,
-                    preconditions=preconditions,
-                    steps=steps,
-                    expectedResult=expected_result,
-                    category=category,
+                    summary=summary,
                     priority=priority,
                     module=module,
-                    moduleId=module_id,
+                    category=category,
                     confirmationNote=confirmation_note,
-                    sourceBatch=f"评审补充-{review_source}",
                 )
             )
 

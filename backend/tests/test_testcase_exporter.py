@@ -13,20 +13,13 @@ from app.services.testcase_exporter import (
 )
 
 
+def _make_case(summary: str, priority: str = "P0", module: str = "登录模块", category: str = "正常流程") -> TestCaseItem:
+    return TestCaseItem(summary=summary, priority=priority, module=module, category=category)
+
+
 def test_build_xlsx_bytes_contains_cases_and_metadata() -> None:
     cases = [
-        TestCaseItem(
-            caseId="TC-001",
-            title="登录成功",
-            preconditions=["用户已注册"],
-            steps=["输入手机号", "输入验证码", "点击登录"],
-            expectedResult="登录成功并进入首页",
-            category="正常流程",
-            priority="P0",
-            module="登录模块",
-            moduleId="M01",
-            sourceBatch="冒烟测试",
-        )
+        _make_case("验证登录成功：已注册用户 → 输入手机号和验证码，点击登录 → 登录成功并进入首页")
     ]
     metadata = GenerationMetadata(
         caseCount=1,
@@ -42,38 +35,16 @@ def test_build_xlsx_bytes_contains_cases_and_metadata() -> None:
 
     assert "测试用例" in workbook.sheetnames
     assert "生成信息" in workbook.sheetnames
-    assert workbook["测试用例"]["A2"].value == "TC-001"
-    assert workbook["测试用例"]["B2"].value == "P0"
-    assert workbook["测试用例"]["C2"].value == "登录模块"
+    assert workbook["测试用例"]["A2"].value == "P0"
+    assert workbook["测试用例"]["B2"].value == "登录模块"
+    assert workbook["测试用例"]["C2"].value == "正常流程"
     assert workbook["生成信息"]["B2"].value == 1
 
 
 def test_build_skill_template_follows_sections() -> None:
     cases = [
-        TestCaseItem(
-            caseId="TC-001",
-            title="登录成功",
-            preconditions=["用户已注册"],
-            steps=["输入正确手机号和验证码"],
-            expectedResult="登录成功并进入首页",
-            category="正常流程",
-            priority="P0",
-            module="登录模块",
-            moduleId="M01",
-            sourceBatch="冒烟测试",
-        ),
-        TestCaseItem(
-            caseId="TC-002",
-            title="密码错误",
-            preconditions=["用户已注册"],
-            steps=["输入错误密码"],
-            expectedResult="提示错误",
-            category="异常与错误处理",
-            priority="P2",
-            module="登录模块",
-            moduleId="M01",
-            sourceBatch="登录模块",
-        ),
+        _make_case("验证登录成功：用户已注册 → 输入正确手机号和验证码，点击登录 → 登录成功并进入首页", "P0"),
+        _make_case("验证密码错误提示：用户已注册 → 输入错误密码，点击登录 → 提示「密码错误」", "P2", "登录模块", "异常与错误处理"),
     ]
     metadata = GenerationMetadata(
         caseCount=2,
@@ -92,61 +63,33 @@ def test_build_skill_template_follows_sections() -> None:
         document_titles=["rules.txt"],
         modules_overview=[("M01", "登录模块", "登录与鉴权")],
     )
-    # 文档头部
     assert "# 【登录模块】功能测试用例" in md
     assert "> 编制人：" in md
     assert "> 日期：" in md
     assert "> 依据文档：rules.txt" in md
-    # 章节结构（与 test-case-template.md 一致）
     assert "## 一、功能模块概述" in md
     assert "### 2.1 模块清单表格" in md
     assert "## 二、冒烟测试用例" in md
     assert "### 2.1 主流程概述" in md
-    assert "SMOKE-01" in md
     assert "### 2.2 冒烟测试用例" in md
     assert "### 2.3 冒烟测试快速检查清单" in md
     assert "### 2.4 冒烟测试统计" in md
     assert "## 三、测试用例明细" in md
-    assert "M01" in md
-    assert "## 四、异常场景测试用例" in md  # E series
-    assert "E01" in md
+    assert "## 四、异常场景测试用例" in md
     assert "## 九、测试用例统计" in md
     assert "## 十、待确认问题标记说明" in md
     assert "## 十一、评审记录" in md
     assert "### 产品经理评审" in md
     assert "## 十二、文档版本记录" in md
-    # 附录
     assert "## 附录：格式规范" in md
-    assert "SMOKE-XX" in md
-    assert "MXX-XXX" in md
-    assert "E-XX" in md
-    assert "S-XX" in md
-    assert "P-XX" in md
-    assert "U-XX" in md
-    assert "I-XX" in md
-    # 步骤格式
-    assert "1." in md
-    assert "<br>" in md
 
 
 def test_build_markdown_table_includes_priority_and_module_columns() -> None:
     markdown = build_markdown_table(
-        [
-            TestCaseItem(
-                caseId="TC-001",
-                title="登录成功",
-                preconditions=["用户已注册"],
-                steps=["输入正确手机号和验证码"],
-                expectedResult="登录成功并进入首页",
-                category="正常流程",
-                priority="P0",
-                module="登录模块",
-                sourceBatch="冒烟测试",
-            )
-        ]
+        [_make_case("验证登录成功：已注册用户 → 输入正确手机号和验证码，点击登录 → 登录成功并进入首页")]
     )
 
-    assert "| 用例ID | 优先级 | 模块 | 分类 |" in markdown
+    assert "| 优先级 | 模块 | 分类 |" in markdown
     assert "P0" in markdown
     assert "登录模块" in markdown
     assert "正常流程" in markdown
@@ -164,7 +107,6 @@ def test_build_filename_from_title() -> None:
     assert _build_filename("A" * 30, ".csv") == ("A" * 30) + ".csv"
     assert _build_filename("", ".xlsx") == "测试用例.xlsx"
     assert _build_filename(None, ".md") == "测试用例.md"
-    # Strips .md/.csv/.xlsx/.pdf/.docx/.txt extensions from title before appending suffix
     assert _build_filename("大师创作资产改为资产库.md", "测试用例.md") == "大师创作资产改为资产库测试用例.md"
     assert _build_filename("需求文档.CSV", "测试用例.csv") == "需求文档测试用例.csv"
     assert _build_filename("测试.TXT", "测试用例.txt") == "测试测试用例.txt"

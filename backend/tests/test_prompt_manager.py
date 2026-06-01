@@ -152,4 +152,3 @@ def test_render_injects_context_variables() -> None:
         },
     )
     assert "自定义模块名" in user
-    assert "M99" in user

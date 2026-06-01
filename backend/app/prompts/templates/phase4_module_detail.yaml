@@ -54,4 +54,9 @@ output_format: |
   基于以上思考，请只输出 JSON，不要输出任何解释、Markdown 代码块标记或其他文字。
 
   JSON 格式：
-  {{"cases":[{{"title":"测试标题","preconditions":["前置条件"],"steps":["步骤1"],"expected_result":"预期结果","priority":"P2","module":"{module_name}","module_id":"{module_id}","category":"覆盖维度","confirmation_note":null}}]}}
+  {{"cases":[{{"summary":"验证XX：前置条件 → 操作步骤 → 预期结果","priority":"P2","module":"{module_name}","category":"覆盖维度","confirmation_note":null}}]}}
+
+  summary 编写规范：
+  - 格式：验证XX：前置条件用逗号连接 → 操作步骤用逗号连接 → 预期结果
+  - 用中文冒号「：」分隔标题和正文
+  - 用「 → 」分隔三个段落

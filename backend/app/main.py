@@ -17,6 +17,7 @@ from app.db.migrate import (
     ensure_append_generate_table,
     ensure_auto_test_soft_delete_columns,
     ensure_case_review_tables,
+    ensure_test_case_items_table,
     ensure_defect_table,
     ensure_generation_record_columns,
     ensure_impact_tables,
@@ -26,6 +27,7 @@ from app.db.migrate import (
 )
 from app.db.session import Base, engine, SessionLocal
 from app.models import generation  # noqa: F401
+from app.models import test_case  # noqa: F401 - ensure model is registered
 from app.models import case_review  # noqa: F401 - ensure models are registered
 from app.models import defect  # noqa: F401 - ensure models are registered
 from app.models import impact  # noqa: F401 - ensure models are registered
@@ -63,6 +65,7 @@ def on_startup() -> None:
     ensure_append_generate_table(engine)
     ensure_defect_table(engine)
     ensure_auto_test_soft_delete_columns(engine)
+    ensure_test_case_items_table(engine)
 
     # 启动时清理历史遗留的超时僵尸 running 任务
     db = SessionLocal()

@@ -316,3 +316,28 @@ def ensure_defect_table(engine: Engine) -> None:
             conn.execute(text("CREATE INDEX idx_defects_submission ON defects(submission_id)"))
             conn.execute(text("CREATE INDEX idx_defects_status ON defects(status)"))
             conn.execute(text("CREATE INDEX idx_defects_created_at ON defects(created_at)"))
+
+
+def ensure_test_case_items_table(engine: Engine) -> None:
+    """Create test_case_items table if it doesn't exist (for case editing feature)."""
+    insp = inspect(engine)
+    if insp.has_table("test_case_items"):
+        return
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE test_case_items (
+                id VARCHAR(36) PRIMARY KEY,
+                generation_task_id VARCHAR(36) NOT NULL REFERENCES generation_records(id) ON DELETE CASCADE,
+                summary TEXT NOT NULL,
+                priority VARCHAR(4) NOT NULL DEFAULT 'P2',
+                module VARCHAR(100) NOT NULL DEFAULT '',
+                category VARCHAR(100) NOT NULL DEFAULT '',
+                confirmation_note TEXT,
+                source VARCHAR(10) NOT NULL DEFAULT 'ai',
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                is_deleted BOOLEAN NOT NULL DEFAULT 0,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.execute(text("CREATE INDEX idx_test_case_items_task ON test_case_items(generation_task_id, is_deleted)"))
