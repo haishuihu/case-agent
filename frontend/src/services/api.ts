@@ -1,9 +1,31 @@
 export interface TestCaseItem {
+  id: string;
   summary: string;
   priority: string;
   module: string;
   category: string;
   confirmationNote?: string | null;
+  source?: string;
+  updatedAt?: string | null;
+}
+
+export interface TestCaseCreate {
+  summary: string;
+  priority?: string;
+  module?: string;
+  category?: string;
+}
+
+export interface TestCaseUpdate {
+  summary?: string;
+  priority?: string;
+  module?: string;
+  category?: string;
+}
+
+export interface TestCaseListResponse {
+  cases: TestCaseItem[];
+  metadata: GenerationMetadata;
 }
 
 export interface ReviewQuestionItem {
@@ -908,4 +930,78 @@ export async function appendGenerateCases(
       modelKey,
     }),
   });
+}
+
+// ── Test Case CRUD ──────────────────────────────────────────────
+
+export async function fetchCases(taskId: string): Promise<TestCaseListResponse> {
+  const url = apiFetchPath(`/api/v1/generate/tasks/${encodeURIComponent(taskId)}/cases`);
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(text || `获取用例列表失败 (HTTP ${resp.status})`);
+  }
+  return resp.json();
+}
+
+export async function createCase(taskId: string, data: TestCaseCreate): Promise<TestCaseItem> {
+  const url = apiFetchPath(`/api/v1/generate/tasks/${encodeURIComponent(taskId)}/cases`);
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(text || `新增用例失败 (HTTP ${resp.status})`);
+  }
+  return resp.json();
+}
+
+export async function updateCase(
+  taskId: string,
+  caseId: string,
+  data: TestCaseUpdate,
+): Promise<TestCaseItem> {
+  const url = apiFetchPath(
+    `/api/v1/generate/tasks/${encodeURIComponent(taskId)}/cases/${encodeURIComponent(caseId)}`,
+  );
+  const resp = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(text || `更新用例失败 (HTTP ${resp.status})`);
+  }
+  return resp.json();
+}
+
+export async function deleteCase(taskId: string, caseId: string): Promise<void> {
+  const url = apiFetchPath(
+    `/api/v1/generate/tasks/${encodeURIComponent(taskId)}/cases/${encodeURIComponent(caseId)}`,
+  );
+  const resp = await fetch(url, { method: "DELETE" });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(text || `删除用例失败 (HTTP ${resp.status})`);
+  }
+}
+
+export async function batchDeleteCases(
+  taskId: string,
+  caseIds: string[],
+): Promise<{ deletedCount: number }> {
+  const url = apiFetchPath(`/api/v1/generate/tasks/${encodeURIComponent(taskId)}/cases/batch-delete`);
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ caseIds }),
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(text || `批量删除失败 (HTTP ${resp.status})`);
+  }
+  return resp.json();
 }
