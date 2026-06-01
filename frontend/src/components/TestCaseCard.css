@@ -190,3 +190,78 @@
   padding: 0 2px;
   border-radius: 2px;
 }
+
+/* Edit mode: checkbox */
+.tc-checkbox {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.tc-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #7C3AED;
+  cursor: pointer;
+}
+
+/* Edit mode: action buttons (appear on hover) */
+.tc-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.testcase-card-row:hover .tc-actions {
+  opacity: 1;
+}
+
+.tc-act-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #E9D5FF;
+  border-radius: 6px;
+  background: #FFFFFF;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #7C3AED;
+  transition: background 150ms, border-color 150ms;
+  user-select: none;
+}
+
+.tc-act-btn:hover {
+  background: #EDE9FE;
+  border-color: #C4B5FD;
+}
+
+.tc-act-btn.del:hover {
+  background: #FEF2F2;
+  border-color: #FECACA;
+  color: #DC2626;
+}
+
+/* Badges */
+.tc-edited-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #FFF7ED;
+  color: #C2410C;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.tc-user-added-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #F0FDF4;
+  color: #16A34A;
+  font-weight: 500;
+  flex-shrink: 0;
+}

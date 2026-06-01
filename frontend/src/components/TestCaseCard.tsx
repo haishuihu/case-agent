@@ -7,6 +7,12 @@ import "./TestCaseCard.css";
 interface TestCaseCardProps {
   cases: TestCaseItem[];
   searchText?: string;
+  // Edit mode props
+  editable?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (caseId: string) => void;
+  onEdit?: (tc: TestCaseItem) => void;
+  onDelete?: (tc: TestCaseItem) => void;
 }
 
 interface ParsedSegment {
@@ -56,7 +62,15 @@ const PRIORITY_CLASS: Record<string, string> = {
   P3: "p3",
 };
 
-export function TestCaseCard({ cases, searchText }: TestCaseCardProps) {
+export function TestCaseCard({
+  cases,
+  searchText,
+  editable = false,
+  selectedIds,
+  onToggleSelect,
+  onEdit,
+  onDelete,
+}: TestCaseCardProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   return (
@@ -71,6 +85,15 @@ export function TestCaseCard({ cases, searchText }: TestCaseCardProps) {
               className={`testcase-card-row${isExpanded ? " expanded" : ""}`}
               onClick={() => setExpandedIndex(isExpanded ? null : i)}
             >
+              {editable && (
+                <div className="tc-checkbox" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds?.has(tc.id) ?? false}
+                    onChange={() => onToggleSelect?.(tc.id)}
+                  />
+                </div>
+              )}
               <div
                 className={`testcase-card-priority ${PRIORITY_CLASS[tc.priority] ?? "p3"}`}
               />
@@ -115,7 +138,18 @@ export function TestCaseCard({ cases, searchText }: TestCaseCardProps) {
               >
                 {tc.priority}
               </span>
+              {tc.source === "user" ? (
+                <span className="tc-user-added-badge">用户添加</span>
+              ) : tc.updatedAt ? (
+                <span className="tc-edited-badge">已修改</span>
+              ) : null}
               <DownOutlined className="testcase-card-expand" />
+              {editable && (
+                <div className="tc-actions" onClick={(e) => e.stopPropagation()}>
+                  <span className="tc-act-btn" onClick={() => onEdit?.(tc)} title="编辑">✎</span>
+                  <span className="tc-act-btn del" onClick={() => onDelete?.(tc)} title="删除">✕</span>
+                </div>
+              )}
             </div>
             {isExpanded && (
               <div className="testcase-card-detail">
