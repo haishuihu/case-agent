@@ -22,6 +22,34 @@ interface ParsedSegment {
 }
 
 function parseSummary(summary: string): { title: string; segments: ParsedSegment[] } {
+  // Template format: 用例标题：xxx\n前置条件：xxx\n操作步骤：xxx\n预期结果：xxx
+  const titleMatch = summary.match(/用例标题[：:]\s*(.+)/);
+  const precondMatch = summary.match(/前置条件[：:]\s*(.+)/);
+  const actionMatch = summary.match(/操作步骤[：:]\s*(.+)/);
+  const expectMatch = summary.match(/预期结果[：:]\s*(.+)/);
+
+  if (titleMatch && (precondMatch || actionMatch || expectMatch)) {
+    // Multi-line template format — extract each labeled section
+    const title = titleMatch[1].trim();
+    const segments: ParsedSegment[] = [];
+    if (precondMatch) {
+      segments.push({ label: "前置", text: precondMatch[1].trim(), isError: false });
+    }
+    if (actionMatch) {
+      segments.push({ label: "操作", text: actionMatch[1].trim(), isError: false });
+    }
+    if (expectMatch) {
+      const text = expectMatch[1].trim();
+      segments.push({
+        label: "预期",
+        text,
+        isError: text.includes("错误") || text.includes("失败") || text.includes("异常") || text.includes("提示"),
+      });
+    }
+    return { title, segments };
+  }
+
+  // Legacy format: 标题：前置内容 → 操作内容 → 预期内容
   const colonIdx = summary.indexOf("：");
   const title = colonIdx > -1 ? summary.slice(0, colonIdx) : summary.slice(0, 60);
   const body = colonIdx > -1 ? summary.slice(colonIdx + 1) : "";
