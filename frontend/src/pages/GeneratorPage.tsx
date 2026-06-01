@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Drawer, Input, Modal, Space, Spin, Tag, Typography, message } from "antd";
+import { Alert, Button, Drawer, Input, Modal, Popconfirm, Space, Spin, Tag, Typography, message } from "antd";
 import {
   ThunderboltOutlined,
   FileSearchOutlined,
@@ -16,6 +16,16 @@ import { ResultPreview } from "../components/ResultPreview";
 import { ReviewPanel } from "../components/review/ReviewPanel";
 import { AppendGenerate } from "../components/generate/AppendGenerate";
 import { GenerationProgress } from "../components/GenerationProgress";
+import { CaseEditModal } from "../components/CaseEditModal";
+import { TestCaseCard } from "../components/TestCaseCard";
+import {
+  fetchCases,
+  createCase as apiCreateCase,
+  updateCase as apiUpdateCase,
+  deleteCase as apiDeleteCase,
+  batchDeleteCases as apiBatchDeleteCases,
+  type TestCaseItem,
+} from "../services/api";
 import { useGenerationTask } from "../context/GenerationTaskContext";
 import {
   clearAllGenerationTasks,
@@ -82,6 +92,14 @@ export function GeneratorPage() {
   const [showReviewPanel, setShowReviewPanel] = useState(false);
   const [showAppendPanel, setShowAppendPanel] = useState(false);
   const [generatedCases, setGeneratedCases] = useState<string>("");
+  // Test case editing
+  const [editableCases, setEditableCases] = useState<TestCaseItem[]>([]);
+  const [selectedCaseIds, setSelectedCaseIds] = useState<Set<string>>(new Set());
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editModalMode, setEditModalMode] = useState<"create" | "edit">("edit");
+  const [editingCase, setEditingCase] = useState<TestCaseItem | null>(null);
+  const [editingModule, setEditingModule] = useState<string>("");
+  const [saving, setSaving] = useState(false);
 
   const documentFiles = useMemo(
     () => normalizeFiles(documentFileList),
@@ -94,12 +112,42 @@ export function GeneratorPage() {
 
   const displayResult = historyOverride ?? ctxResult;
 
-  // Keep generated cases markdown in sync for review/append
-  useEffect(() => {
-    if (displayResult?.markdown) {
-      setGeneratedCases(displayResult.markdown);
+  // Merge editable cases into display result for up-to-date stats
+  const displayResultWithEdits = useMemo(() => {
+    if (!displayResult) return null;
+    if (!editableCases.length) return displayResult;
+    const total = editableCases.length;
+    const moduleCounts: Record<string, number> = {};
+    const priorityCounts: Record<string, number> = {};
+    const categoryCounts: Record<string, number> = {};
+    for (const c of editableCases) {
+      const m = c.module || "未分组";
+      const p = c.priority || "P2";
+      const cat = c.category || "其他";
+      moduleCounts[m] = (moduleCounts[m] || 0) + 1;
+      priorityCounts[p] = (priorityCounts[p] || 0) + 1;
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
     }
-  }, [displayResult]);
+    return {
+      ...displayResult,
+      cases: editableCases,
+      metadata: {
+        ...displayResult.metadata,
+        caseCount: total,
+        moduleCounts,
+        priorityCounts,
+        categoryCounts,
+      },
+    };
+  }, [displayResult, editableCases]);
+
+  // Keep generatedCases in sync
+  const resultForDisplay = displayResultWithEdits ?? displayResult;
+  useEffect(() => {
+    if (resultForDisplay?.markdown) {
+      setGeneratedCases(resultForDisplay.markdown);
+    }
+  }, [resultForDisplay]);
 
   const handleDocumentChange: UploadProps["onChange"] = ({ fileList }) => {
     setDocumentFileList(fileList);
@@ -167,6 +215,22 @@ export function GeneratorPage() {
       messageApi.info("任务已取消。");
     }
   }, [taskStatus, messageApi]);
+
+  // Fetch editable cases from API when result is available
+  useEffect(() => {
+    if (displayResult?.generationId) {
+      fetchCases(displayResult.generationId)
+        .then((r) => setEditableCases(r.cases))
+        .catch(() => {
+          // Fallback: use displayResult.cases directly
+          setEditableCases(
+            displayResult.cases.map((c) => ({ ...c, id: c.id || "" }))
+          );
+        });
+    } else {
+      setEditableCases([]);
+    }
+  }, [displayResult?.generationId]);
 
   const runGenerateAsync = async (finalRequirementText: string) => {
     setErrorMessage("");
@@ -288,6 +352,75 @@ export function GeneratorPage() {
       messageApi.error(e instanceof Error ? e.message : "清理历史失败。");
     } finally {
       setHistoryClearing(false);
+    }
+  };
+
+  // ── Test Case Edit Handlers ──
+
+  const handleToggleSelect = (caseId: string) => {
+    setSelectedCaseIds((prev) => {
+      const next = new Set(prev);
+      next.has(caseId) ? next.delete(caseId) : next.add(caseId);
+      return next;
+    });
+  };
+
+  const handleOpenEdit = (tc: TestCaseItem) => {
+    setEditingCase(tc);
+    setEditModalMode("edit");
+    setEditModalOpen(true);
+  };
+
+  const handleOpenCreate = (moduleName: string) => {
+    setEditingCase(null);
+    setEditingModule(moduleName);
+    setEditModalMode("create");
+    setEditModalOpen(true);
+  };
+
+  const handleSaveCase = async (data: { summary: string; priority: string; module: string; category: string }) => {
+    if (!displayResult?.generationId) return;
+    setSaving(true);
+    try {
+      if (editModalMode === "edit" && editingCase?.id) {
+        const updated = await apiUpdateCase(displayResult.generationId, editingCase.id, data);
+        setEditableCases((prev) => prev.map((c) => (c.id === editingCase.id ? updated : c)));
+        messageApi.success("保存成功");
+      } else {
+        const created = await apiCreateCase(displayResult.generationId, data);
+        setEditableCases((prev) => [...prev, created]);
+        messageApi.success("已添加");
+      }
+      setEditModalOpen(false);
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "操作失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteSingle = async (tc: TestCaseItem) => {
+    if (!displayResult?.generationId || !tc.id) return;
+    try {
+      await apiDeleteCase(displayResult.generationId, tc.id);
+      setEditableCases((prev) => prev.filter((c) => c.id !== tc.id));
+      setSelectedCaseIds((prev) => { const next = new Set(prev); next.delete(tc.id); return next; });
+      messageApi.success("已删除");
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "删除失败");
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (!displayResult?.generationId || selectedCaseIds.size === 0) return;
+    const ids = Array.from(selectedCaseIds);
+    try {
+      const result = await apiBatchDeleteCases(displayResult.generationId, ids);
+      setEditableCases((prev) => prev.filter((c) => !selectedCaseIds.has(c.id)));
+      setSelectedCaseIds(new Set());
+      messageApi.success(`已删除 ${result.deletedCount} 条`);
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "批量删除失败");
     }
   };
 
@@ -424,9 +557,31 @@ export function GeneratorPage() {
             </div>
           </div>
 
+          {/* Bulk delete bar */}
+          {selectedCaseIds.size > 0 && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 16px", background: "#FEF2F2", border: "1px solid #FECACA",
+              borderRadius: 8, marginBottom: 12,
+            }}>
+              <span style={{ fontSize: 13, color: "#DC2626", fontWeight: 500 }}>
+                已选 {selectedCaseIds.size} 条用例
+              </span>
+              <Popconfirm
+                title={`确认删除选中的 ${selectedCaseIds.size} 条用例？`}
+                onConfirm={handleBatchDelete}
+                okText="确认删除"
+                cancelText="取消"
+                okButtonProps={{ danger: true }}
+              >
+                <Button danger size="small">删除选中 ({selectedCaseIds.size})</Button>
+              </Popconfirm>
+            </div>
+          )}
+
           {/* Result content */}
           <ResultPreview
-            result={displayResult}
+            result={resultForDisplay}
             loading={false}
             taskStatus={null}
           />
@@ -471,6 +626,64 @@ export function GeneratorPage() {
               </Button>
             )}
           </div>
+
+          {/* Editable TestCase List (grouped by module) */}
+          {editableCases.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <Typography.Title level={5} style={{ marginBottom: 16 }}>
+                用例编辑
+              </Typography.Title>
+              {Array.from(
+                editableCases.reduce((groups, tc) => {
+                  const key = tc.module || "未分组";
+                  if (!groups.has(key)) groups.set(key, []);
+                  groups.get(key)!.push(tc);
+                  return groups;
+                }, new Map<string, TestCaseItem[]>())
+              ).map(([moduleName, cases]) => (
+                <div key={moduleName} className="module-group">
+                  <div className="module-group-header">
+                    <span className="module-group-name">{moduleName}</span>
+                    <span style={{ fontSize: 12, padding: "2px 10px", borderRadius: 9999, background: "#F3E8FF", color: "#7C3AED", fontWeight: 500, marginLeft: 4 }}>
+                      {cases.length} 条
+                    </span>
+                  </div>
+                  <TestCaseCard
+                    cases={cases}
+                    editable
+                    selectedIds={selectedCaseIds}
+                    onToggleSelect={handleToggleSelect}
+                    onEdit={handleOpenEdit}
+                    onDelete={handleDeleteSingle}
+                  />
+                  <div
+                    onClick={() => handleOpenCreate(moduleName)}
+                    style={{
+                      padding: "10px 16px", borderTop: "1px dashed #E9D5FF",
+                      display: "flex", alignItems: "center", gap: 8,
+                      fontSize: 13, color: "#7C3AED", cursor: "pointer",
+                      transition: "background 150ms",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#FAF5FF")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                  >
+                    + 新增用例
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* CaseEditModal */}
+          <CaseEditModal
+            open={editModalOpen}
+            mode={editModalMode}
+            initialData={editingCase ?? undefined}
+            defaultModule={editingModule}
+            onCancel={() => setEditModalOpen(false)}
+            onSave={handleSaveCase}
+            saving={saving}
+          />
         </div>
       )}
 
