@@ -18,6 +18,7 @@ frontend/internal_testcase_assistant.db
 .DS_Store
 .env
 .cursor/
+.idea/
 
 # LLM 缓存（API 响应缓存，不应提交）
 backend/.llm_cache/
