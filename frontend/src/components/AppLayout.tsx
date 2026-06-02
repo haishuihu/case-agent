@@ -61,8 +61,8 @@ export function AppLayout() {
       style={{ cursor: "pointer" }}
     >
       <span className="header-task-dot" />
-      <Typography.Text style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>生成中...</Typography.Text>
-      <LoadingOutlined style={{ fontSize: 14, color: "var(--text-secondary)" }} />
+      <Typography.Text style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>生成中...</Typography.Text>
+      <LoadingOutlined style={{ fontSize: 16, color: "var(--text-secondary)" }} />
     </Space>
   ) : showDone ? (
     <Space
@@ -71,8 +71,8 @@ export function AppLayout() {
       onClick={() => navigate("/")}
       style={{ cursor: "pointer" }}
     >
-      <CheckCircleOutlined style={{ color: "var(--color-success)", fontSize: 14 }} />
-      <Typography.Text style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>生成完成</Typography.Text>
+      <CheckCircleOutlined style={{ color: "var(--color-success)", fontSize: 16 }} />
+      <Typography.Text style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>生成完成</Typography.Text>
     </Space>
   ) : null;
 
@@ -89,7 +89,7 @@ export function AppLayout() {
             {taskHint}
             <Button
               type="text"
-              icon={<SettingOutlined style={{ fontSize: 18 }} />}
+              icon={<SettingOutlined style={{ fontSize: 20 }} />}
               onClick={() => navigate("/settings")}
               style={{ color: "var(--text-secondary)" }}
               title="模型配置"

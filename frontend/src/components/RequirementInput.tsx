@@ -1,5 +1,5 @@
-import type { KeyboardEvent, ReactElement } from "react";
-import { Button, Card, Collapse, Input, Select, Space, Tooltip, Typography, Upload } from "antd";
+import type { KeyboardEvent } from "react";
+import { Button, Card, Input, Select, Space, Tooltip, Typography, Upload } from "antd";
 import {
   SendOutlined,
   LoadingOutlined,
@@ -9,8 +9,8 @@ import {
   MinusCircleFilled,
   InboxOutlined,
   PictureOutlined,
-  PaperClipOutlined,
   SettingOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import type { UploadFile, UploadProps } from "antd/es/upload/interface";
@@ -18,24 +18,11 @@ import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 import type { ModelOption } from "../services/api";
 
 const { TextArea } = Input;
-const { Dragger } = Upload;
 
 const uploadPropsBase: Partial<UploadProps> = {
   beforeUpload: () => false,
   maxCount: 6,
 };
-
-/** 列表项 hover 展示完整文件名；配合 CSS 缩略显示 */
-function uploadItemWithTitle(
-  originNode: ReactElement,
-  file: UploadFile
-): ReactElement {
-  return (
-    <Tooltip title={file.name} placement="topLeft" mouseEnterDelay={0.35}>
-      <span className="requirement-upload-item-tooltip-host">{originNode}</span>
-    </Tooltip>
-  );
-}
 
 interface RequirementInputProps {
   value: string;
@@ -95,31 +82,110 @@ export function RequirementInput({
       size="small"
     >
       <div className="card-section-stack">
-        <div className="model-select-row">
-          <Typography.Text type="secondary" style={{ fontSize: 13, flexShrink: 0 }}>
-            模型
-          </Typography.Text>
-          <Select
-            value={selectedModelKey}
-            onChange={onModelChange}
-            placeholder="选择模型"
-            size="small"
-            options={modelOptions.map((option) => ({
-              value: option.key,
-              label: option.label,
-            }))}
-            style={{ flex: 1 }}
-          />
-          <Tooltip title="管理模型配置">
-            <Button
-              type="text"
+        {/* ── Combined toolbar: model selector + upload buttons in one row ── */}
+        <div className="input-toolbar">
+          <div className="input-toolbar-left">
+            <Typography.Text type="secondary" className="input-toolbar-label">
+              模型
+            </Typography.Text>
+            <Select
+              value={selectedModelKey}
+              onChange={onModelChange}
+              placeholder="选择模型"
               size="small"
-              icon={<SettingOutlined style={{ fontSize: 13 }} />}
-              onClick={() => navigate("/settings")}
-              style={{ color: "var(--text-muted)" }}
+              options={modelOptions.map((option) => ({
+                value: option.key,
+                label: option.label,
+              }))}
+              style={{ width: 180 }}
             />
-          </Tooltip>
+            <Tooltip title="管理模型配置">
+              <Button
+                type="text"
+                size="small"
+                icon={<SettingOutlined style={{ fontSize: 13 }} />}
+                onClick={() => navigate("/settings")}
+                style={{ color: "var(--text-muted)" }}
+              />
+            </Tooltip>
+          </div>
+
+          <div className="input-toolbar-divider" />
+
+          <div className="input-toolbar-right">
+            <Upload
+              {...uploadPropsBase}
+              fileList={documentFileList}
+              onChange={onDocumentChange}
+              accept=".txt,.md,.pdf,.docx"
+              multiple
+              showUploadList={false}
+            >
+              <Button
+                icon={<InboxOutlined />}
+                className="input-toolbar-upload-btn"
+              >
+                文档
+                {documentCount > 0 && (
+                  <span className="input-toolbar-badge">{documentCount}</span>
+                )}
+              </Button>
+            </Upload>
+
+            <Upload
+              {...uploadPropsBase}
+              fileList={imageFileList}
+              onChange={onImageChange}
+              accept="image/*"
+              multiple
+              showUploadList={false}
+            >
+              <Button
+                icon={<PictureOutlined />}
+                className="input-toolbar-upload-btn"
+              >
+                图片
+                {imageCount > 0 && (
+                  <span className="input-toolbar-badge">{imageCount}</span>
+                )}
+              </Button>
+            </Upload>
+          </div>
         </div>
+
+        {/* ── Uploaded file chips ── */}
+        {(documentCount > 0 || imageCount > 0) && (
+          <div className="input-file-chips">
+            {documentFileList.map((file) => (
+              <Tooltip key={file.uid} title={file.name} mouseEnterDelay={0.3}>
+                <span className="input-file-chip input-file-chip--doc">
+                  <span className="input-file-chip-text">{file.name}</span>
+                  <CloseOutlined
+                    className="input-file-chip-close"
+                    onClick={() => {
+                      const next = documentFileList.filter((f) => f.uid !== file.uid);
+                      onDocumentChange({ fileList: next } as Parameters<UploadProps["onChange"]>[0]);
+                    }}
+                  />
+                </span>
+              </Tooltip>
+            ))}
+            {imageFileList.map((file) => (
+              <Tooltip key={file.uid} title={file.name} mouseEnterDelay={0.3}>
+                <span className="input-file-chip input-file-chip--img">
+                  <span className="input-file-chip-text">{file.name}</span>
+                  <CloseOutlined
+                    className="input-file-chip-close"
+                    onClick={() => {
+                      const next = imageFileList.filter((f) => f.uid !== file.uid);
+                      onImageChange({ fileList: next } as Parameters<UploadProps["onChange"]>[0]);
+                    }}
+                  />
+                </span>
+              </Tooltip>
+            ))}
+          </div>
+        )}
 
         <TextArea
           rows={8}
@@ -135,71 +201,6 @@ export function RequirementInput({
         />
 
         <div className="char-count">{charCount > 0 ? `${charCount} 字` : ""}</div>
-
-        <Collapse
-          bordered={false}
-          className="requirement-refs-collapse"
-          defaultActiveKey={["refs"]}
-          style={{ background: "transparent" }}
-          items={[
-            {
-              key: "refs",
-              label: (
-                <Space>
-                  <PaperClipOutlined />
-                  <span>参考资料（可选）</span>
-                </Space>
-              ),
-              children: (
-                <div className="requirement-uploads-row">
-                  <div className="requirement-upload-col requirement-upload-col--doc">
-                    <div className="attachment-section-label">
-                      <span>文档</span>
-                      <span className="attachment-formats">.txt .md .pdf .docx</span>
-                    </div>
-                    <Dragger
-                      {...uploadPropsBase}
-                      className="requirement-upload-dragger"
-                      fileList={documentFileList}
-                      onChange={onDocumentChange}
-                      accept=".txt,.md,.pdf,.docx"
-                      multiple
-                      itemRender={(node, file) => uploadItemWithTitle(node, file)}
-                    >
-                      <p className="ant-upload-drag-icon">
-                        <InboxOutlined />
-                      </p>
-                      <p className="ant-upload-text">点击或拖拽文档到此处上传</p>
-                      <p className="ant-upload-hint">单文件不超过平台限制，最多 6 个文件</p>
-                    </Dragger>
-                  </div>
-                  <div className="requirement-upload-col requirement-upload-col--img">
-                    <div className="attachment-section-label">
-                      <span>图片</span>
-                      <span className="attachment-formats">PNG / JPG / GIF / WEBP</span>
-                    </div>
-                    <Upload
-                      {...uploadPropsBase}
-                      fileList={imageFileList}
-                      onChange={onImageChange}
-                      accept="image/*"
-                      listType="picture-card"
-                      multiple
-                      itemRender={(node, file) => uploadItemWithTitle(node, file)}
-                    >
-                      {imageFileList.length < 6 && (
-                        <div>
-                          <PictureOutlined />
-                          <div style={{ marginTop: 8 }}>上传</div>
-                        </div>
-                      )}
-                    </Upload>
-                  </div>
-                </div>
-              ),
-            },
-          ]}
-        />
 
         <div className="readiness-card">
           <div className="readiness-list">
