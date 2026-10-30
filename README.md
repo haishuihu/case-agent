@@ -428,11 +428,7 @@ MIT License。详见 [LICENSE](LICENSE) 文件。
 
 ---
 
-## 贡献与反馈
 
-欢迎提 Issue 与 PR。如果你是技术大牛，对架构设计、Prompt 工程、RAG 优化有见解，欢迎交流！
-
-**项目地址**：https://gitee.com/kyleoo/case-agent
 
 ---
 
